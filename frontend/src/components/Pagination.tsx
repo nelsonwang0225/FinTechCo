@@ -1,3 +1,4 @@
+import { IconChevronLeft, IconChevronRight } from "../layout/icons";
 import { formatCount } from "../lib/format";
 
 export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (page: number) => void }) {
@@ -11,6 +12,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
       </span>
       <div className="pagination-controls">
         <button type="button" className="btn btn-sm" onClick={() => onPage(page - 1)} disabled={page <= 1}>
+          <IconChevronLeft />
           Previous
         </button>
         <span className="num muted">
@@ -18,6 +20,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
         </span>
         <button type="button" className="btn btn-sm" onClick={() => onPage(page + 1)} disabled={page >= pages}>
           Next
+          <IconChevronRight />
         </button>
       </div>
     </nav>

@@ -24,8 +24,11 @@ export function Tabs({ tabs, active, onChange, label }: { tabs: TabDef[]; active
               const index = tabs.findIndex((t) => t.id === active);
               const next = tabs[(index + 1) % tabs.length];
               const prev = tabs[(index - 1 + tabs.length) % tabs.length];
-              if (e.key === "ArrowRight" && next) onChange(next.id);
-              if (e.key === "ArrowLeft" && prev) onChange(prev.id);
+              const target = e.key === "ArrowRight" ? next : e.key === "ArrowLeft" ? prev : undefined;
+              if (!target) return;
+              e.preventDefault();
+              onChange(target.id);
+              document.getElementById(`tab-${target.id}`)?.focus();
             }}
           >
             {tab.label}

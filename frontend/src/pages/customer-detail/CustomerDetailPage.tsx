@@ -9,6 +9,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft } from "../../layout/icons";
 
 export function CustomerDetailPage() {
   const { customerId = "" } = useParams();
@@ -42,7 +43,7 @@ export function CustomerDetailPage() {
         </Link>
       ),
     },
-    { key: "order", header: "Order", render: (p) => <span className="mono">{p.order_reference}</span> },
+    { key: "order", header: "Order", className: "secondary", render: (p) => <span className="mono">{p.order_reference}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} label={p.status_label} /> },
     { key: "channel", header: "Channel", render: (p) => (p.location ? `${p.channel_label} · ${p.location.name}` : p.channel_label) },
     { key: "method", header: "Method", render: (p) => p.method?.label ?? <span className="muted">—</span> },
@@ -68,10 +69,16 @@ export function CustomerDetailPage() {
   return (
     <>
       <PageHeader
+        above={
+          <Link to="/customers">
+            <IconChevronLeft />
+            Customers
+          </Link>
+        }
         title={c.full_name}
         subtitle={
           <>
-            <Link to="/customers">Customers</Link> · <span className="mono">{c.reference}</span>
+            Customer <span className="mono">{c.reference}</span> · {c.email}
           </>
         }
       />
@@ -84,7 +91,7 @@ export function CustomerDetailPage() {
             { term: "Customer since", value: <Timestamp iso={c.created_at} mode="full" /> },
             { term: "First payment", value: <Timestamp iso={c.first_payment_at} mode="full" /> },
             { term: "Recent activity", value: <Timestamp iso={c.last_activity_at} mode="full" /> },
-            { term: "Customer id", value: <span className="mono">{c.id}</span> },
+            { term: "Customer ID", value: <span className="mono">{c.id}</span> },
           ]}
         />
       </section>

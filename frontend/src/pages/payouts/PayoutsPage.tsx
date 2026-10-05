@@ -37,6 +37,7 @@ export function PayoutsPage() {
     {
       key: "date",
       header: "Payout date",
+      className: "primary",
       render: (p) => (
         <Link to={`/payouts/${p.id}`} className="row-link" onClick={(e) => e.stopPropagation()}>
           {formatWeekdayDate(p.payout_date)}
@@ -64,7 +65,7 @@ export function PayoutsPage() {
 
   return (
     <>
-      <PageHeader title="Payouts" subtitle="Money sent to the bank account, each one itemised to the cent." />
+      <PageHeader title="Payouts" subtitle="Track funds moving from payment activity to your bank account. Each payout is itemised to the cent." />
       {list.data ? <FundsCards summary={list.data.summary} /> : null}
       <FilterBar>
         <FilterSelect id="payouts-status" label="Status" value={query.get("status")} options={STATUS_OPTIONS} onChange={(v) => query.set({ status: v })} />

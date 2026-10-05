@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 export interface BarChartPoint {
   label: string;
@@ -12,6 +12,27 @@ export function niceCeiling(max: number): number {
   const unit = max / magnitude;
   const factor = unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10;
   return factor * magnitude;
+}
+
+const DEFAULT_WIDTH = 720;
+
+/** The rendered width of the chart's container, so the SVG draws at 1:1 and labels keep their type size. */
+function useContainerWidth(): [RefObject<HTMLDivElement | null>, number] {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const w = Math.round(el.getBoundingClientRect().width);
+      if (w > 0) setWidth(w);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
 }
 
 /**
@@ -36,6 +57,7 @@ export function BarChart({
   height?: number;
 }) {
   const id = useId();
+  const [wrapRef, measured] = useContainerWidth();
   const titleId = `${id}-title`;
   const descId = `${id}-desc`;
   const max = niceCeiling(Math.max(0, ...series.map((p) => p.value)));
@@ -45,11 +67,12 @@ export function BarChart({
   if (horizontal) {
     const rowHeight = 28;
     const labelWidth = 96;
-    const width = 720;
+    const width = measured;
     const chartHeight = Math.max(rowHeight, series.length * rowHeight) + 24;
     const plotWidth = width - labelWidth - 16;
     return (
-      <svg className="chart" viewBox={`0 0 ${width} ${chartHeight}`} role="img" aria-labelledby={titleId} aria-describedby={descId} focusable="false">
+      <div className="chart-wrap" ref={wrapRef}>
+      <svg className="chart" viewBox={`0 0 ${width} ${chartHeight}`} style={{ height: chartHeight }} role="img" aria-labelledby={titleId} aria-describedby={descId} focusable="false">
         <title id={titleId}>{title}</title>
         <desc id={descId}>{description}</desc>
         {ticks.map((t) => {
@@ -77,20 +100,22 @@ export function BarChart({
           );
         })}
       </svg>
+      </div>
     );
   }
 
-  const width = 720;
-  const left = 72;
+  const width = measured;
+  const left = 64;
   const bottom = 28;
   const top = 8;
   const plotHeight = height - top - bottom;
   const plotWidth = width - left - 8;
   const slot = series.length === 0 ? plotWidth : plotWidth / series.length;
-  const barWidth = Math.max(4, Math.min(48, slot * 0.64));
-  const labelEvery = Math.max(1, Math.ceil(series.length / 10));
+  const barWidth = Math.max(4, Math.min(72, slot * 0.6));
+  const labelEvery = Math.max(1, Math.ceil(series.length / 14));
   return (
-    <svg className="chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId} aria-describedby={descId} focusable="false">
+    <div className="chart-wrap" ref={wrapRef}>
+    <svg className="chart" viewBox={`0 0 ${width} ${height}`} style={{ height }} role="img" aria-labelledby={titleId} aria-describedby={descId} focusable="false">
       <title id={titleId}>{title}</title>
       <desc id={descId}>{description}</desc>
       {ticks.map((t) => {
@@ -121,5 +146,6 @@ export function BarChart({
         );
       })}
     </svg>
+    </div>
   );
 }

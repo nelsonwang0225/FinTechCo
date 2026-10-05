@@ -10,6 +10,7 @@ import { Timeline } from "../../components/Timeline";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft } from "../../layout/icons";
 import { useSession } from "../../session/SessionProvider";
 
 export function PaymentDetailPage() {
@@ -61,7 +62,7 @@ export function PaymentDetailPage() {
     <span className="muted">Guest checkout</span>
   );
   const payoutValue = p.payout ? (
-    <span className="inline-badge">
+    <span>
       {can("payouts:read") ? <Link to={`/payouts/${p.payout.id}`}>Payout {p.payout.status_label.toLowerCase()}</Link> : <>Payout {p.payout.status_label.toLowerCase()}</>}
       {p.payout.paid_at ? (
         <>
@@ -89,6 +90,12 @@ export function PaymentDetailPage() {
   return (
     <>
       <PageHeader
+        above={
+          <Link to="/payments">
+            <IconChevronLeft />
+            Payments
+          </Link>
+        }
         title={
           <span className="detail-title">
             <span className="mono">{p.order_reference}</span>
@@ -97,7 +104,7 @@ export function PaymentDetailPage() {
         }
         subtitle={
           <>
-            <Link to="/payments">Payments</Link> · Payment <span className="mono">{p.id}</span>
+            Payment <span className="mono">{p.id}</span> · {p.location ? `${p.channel_label} · ${p.location.name}` : p.channel_label}
           </>
         }
         actions={
@@ -124,7 +131,7 @@ export function PaymentDetailPage() {
             { term: "Payout", value: payoutValue },
             { term: "Dispute", value: disputeValue },
             { term: "Refunded", value: p.refunded_cents > 0 ? <Money cents={p.refunded_cents} /> : <span className="muted">None</span> },
-            { term: "Payment id", value: <span className="mono">{p.id}</span> },
+            { term: "Payment ID", value: <span className="mono">{p.id}</span> },
           ]}
         />
       </section>

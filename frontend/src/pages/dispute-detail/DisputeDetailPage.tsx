@@ -9,6 +9,7 @@ import { Timeline } from "../../components/Timeline";
 import { Timestamp } from "../../components/Timestamp";
 import { LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft } from "../../layout/icons";
 import { useCurrentSession, useSession } from "../../session/SessionProvider";
 import { Deadline } from "../disputes/Deadline";
 
@@ -43,9 +44,15 @@ export function DisputeDetailPage() {
             <StatusBadge status={d.status} label={d.status_label} />
           </span>
         }
+        above={
+          <Link to="/disputes">
+            <IconChevronLeft />
+            Disputes
+          </Link>
+        }
         subtitle={
           <>
-            <Link to="/disputes">Disputes</Link> · <span className="mono">{d.id}</span>
+            Dispute <span className="mono">{d.id}</span> · {d.reason_label}
           </>
         }
         actions={
@@ -88,7 +95,7 @@ export function DisputeDetailPage() {
               ),
             },
             { term: "Paid on", value: <Timestamp iso={d.payment.created_at} mode="full" /> },
-            { term: "Dispute id", value: <span className="mono">{d.id}</span> },
+            { term: "Dispute ID", value: <span className="mono">{d.id}</span> },
           ]}
         />
       </section>
