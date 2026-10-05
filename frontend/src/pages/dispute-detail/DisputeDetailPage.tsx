@@ -95,7 +95,7 @@ export function DisputeDetailPage() {
               ),
             },
             { term: "Paid on", value: <Timestamp iso={d.payment.created_at} mode="full" /> },
-            { term: "Dispute id", value: <span className="mono">{d.id}</span> },
+            { term: "Dispute ID", value: <span className="mono">{d.id}</span> },
           ]}
         />
       </section>

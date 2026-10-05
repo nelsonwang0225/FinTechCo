@@ -10,11 +10,14 @@ import { LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
 import { IconChevronLeft, IconDownload } from "../../layout/icons";
 import { formatCount, formatDate, formatWeekdayDate } from "../../lib/format";
+import { useQueryState } from "../../lib/query";
+import { Pagination } from "../../components/Pagination";
 import { useSession } from "../../session/SessionProvider";
 
 export function PayoutDetailPage() {
   const { payoutId = "" } = useParams();
   const { can } = useSession();
+  const query = useQueryState();
   const detail = useApi<PayoutDetail>(`/api/payouts/${encodeURIComponent(payoutId)}`);
 
   if (detail.error) {
@@ -34,6 +37,10 @@ export function PayoutDetailPage() {
     );
   }
   const p = detail.data;
+  const pageSize = 25;
+  const pages = Math.max(1, Math.ceil(p.movements.length / pageSize));
+  const page = Math.min(Math.max(1, query.getInt("page", 1)), pages);
+  const pagedMovements = p.movements.slice((page - 1) * pageSize, page * pageSize);
   const buckets: { label: string; cents: number }[] = [
     { label: "Collections", cents: p.buckets.collections_cents },
     { label: "Fees", cents: p.buckets.fees_cents },
@@ -153,7 +160,8 @@ export function PayoutDetailPage() {
         <h2 id="movements-heading" className="section-title">
           Movements
         </h2>
-        <DataTable caption="Movements in this payout" columns={movementColumns} rows={p.movements} rowKey={(m) => m.id} />
+        <DataTable caption="Movements in this payout" columns={movementColumns} rows={pagedMovements} rowKey={(m) => m.id} />
+        {p.movements.length > pageSize ? <Pagination page={page} pageSize={pageSize} total={p.movements.length} onPage={(n) => query.set({ page: n })} /> : null}
       </section>
     </>
   );

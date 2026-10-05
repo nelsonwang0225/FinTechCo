@@ -91,7 +91,7 @@ export function CustomerDetailPage() {
             { term: "Customer since", value: <Timestamp iso={c.created_at} mode="full" /> },
             { term: "First payment", value: <Timestamp iso={c.first_payment_at} mode="full" /> },
             { term: "Recent activity", value: <Timestamp iso={c.last_activity_at} mode="full" /> },
-            { term: "Customer id", value: <span className="mono">{c.id}</span> },
+            { term: "Customer ID", value: <span className="mono">{c.id}</span> },
           ]}
         />
       </section>

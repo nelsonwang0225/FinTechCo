@@ -111,7 +111,7 @@ export function BarChart({
   const plotHeight = height - top - bottom;
   const plotWidth = width - left - 8;
   const slot = series.length === 0 ? plotWidth : plotWidth / series.length;
-  const barWidth = Math.max(4, Math.min(56, slot * 0.56));
+  const barWidth = Math.max(4, Math.min(72, slot * 0.6));
   const labelEvery = Math.max(1, Math.ceil(series.length / 14));
   return (
     <div className="chart-wrap" ref={wrapRef}>

@@ -43,7 +43,7 @@ function ProfileTab() {
   const locationColumns: Column<LocationOption>[] = [
     { key: "name", header: "Location", className: "primary", render: (l) => l.name },
     { key: "address", header: "Address", render: (l) => `${l.address_line}, ${l.city}, ${l.state}` },
-    { key: "id", header: "Id", className: "secondary", render: (l) => <span className="mono">{l.id}</span> },
+    { key: "id", header: "ID", className: "secondary", render: (l) => <span className="mono">{l.id}</span> },
   ];
   return (
     <>
@@ -59,7 +59,7 @@ function ProfileTab() {
             { term: "Payout schedule", value: p.payout_schedule_label },
             { term: "Payout destination", value: p.destination },
             { term: "On FinTechCo since", value: <Timestamp iso={p.created_at} mode="full" /> },
-            { term: "Business id", value: <span className="mono">{p.id}</span> },
+            { term: "Business ID", value: <span className="mono">{p.id}</span> },
           ]}
         />
       </section>
@@ -119,7 +119,7 @@ function ActivityTab({ query }: { query: QueryState }) {
     { key: "who", header: "Who", className: "primary", render: (a) => a.actor.full_name },
     { key: "what", header: "What", render: (a) => a.kind_label },
     { key: "subject", header: "Subject", render: (a) => <SubjectLink item={a} /> },
-    { key: "details", header: "Details", render: (a) => <span className="activity-body">{a.body}</span> },
+    { key: "details", header: "Details", render: (a) => <span className="activity-body" title={a.body}>{a.body}</span> },
   ];
   return (
     <>

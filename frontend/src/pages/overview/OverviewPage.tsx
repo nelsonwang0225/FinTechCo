@@ -28,12 +28,14 @@ export function OverviewPage() {
       <PageHeader
         title={data ? `${data.greeting.salutation}, ${data.greeting.first_name}` : "Overview"}
         subtitle={data ? `${data.greeting.merchant_name} · As of ${formatTimestampFull(data.greeting.as_of)}` : undefined}
+        actions={
+          meta.data ? (
+            <FilterBar>
+              <PeriodFilter query={query} presets={meta.data.period_presets} idPrefix="overview-period" />
+            </FilterBar>
+          ) : undefined
+        }
       />
-      {meta.data ? (
-        <FilterBar>
-          <PeriodFilter query={query} presets={meta.data.period_presets} idPrefix="overview-period" />
-        </FilterBar>
-      ) : null}
       {overview.error ? <LoadError error={overview.error} onRetry={overview.reload} /> : null}
       {!overview.error && !data ? <LoadingState rows={8} /> : null}
       {data ? <OverviewBody data={data} loading={overview.loading} /> : null}
@@ -96,17 +98,25 @@ function OverviewBody({ data, loading }: { data: Overview; loading: boolean }) {
       </section>
 
       <div className="overview-grid">
-        <section aria-labelledby="recent-heading">
-          <div className="section-head">
-            <h2 id="recent-heading" className="section-title">
-              Recent payments
+        <div className="detail-stack">
+          <section aria-labelledby="recent-heading">
+            <div className="section-head">
+              <h2 id="recent-heading" className="section-title">
+                Recent payments
+              </h2>
+              <Link to="/payments" className="section-aside">
+                All payments
+              </Link>
+            </div>
+            <RecentPayments items={data.recent_payments} />
+          </section>
+          <section className="card" aria-labelledby="attention-heading">
+            <h2 id="attention-heading" className="section-title">
+              Needs attention
             </h2>
-            <Link to="/payments" className="section-aside">
-              All payments
-            </Link>
-          </div>
-          <RecentPayments items={data.recent_payments} />
-        </section>
+            <AttentionList items={data.attention} asOf={data.greeting.as_of} can={can} />
+          </section>
+        </div>
         <div className="detail-stack">
           <section className="card" aria-labelledby="upcoming-heading">
             <h2 id="upcoming-heading" className="section-title">
@@ -126,12 +136,6 @@ function OverviewBody({ data, loading }: { data: Overview; loading: boolean }) {
               <BucketRow label="Adjustments" cents={data.upcoming_payout.buckets.adjustments_cents} />
             </dl>
             <p className="stat-foot muted">{data.upcoming_payout.destination}</p>
-          </section>
-          <section className="card" aria-labelledby="attention-heading">
-            <h2 id="attention-heading" className="section-title">
-              Needs attention
-            </h2>
-            <AttentionList items={data.attention} asOf={data.greeting.as_of} can={can} />
           </section>
         </div>
       </div>

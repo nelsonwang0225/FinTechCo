@@ -62,7 +62,7 @@ export function PaymentDetailPage() {
     <span className="muted">Guest checkout</span>
   );
   const payoutValue = p.payout ? (
-    <span className="inline-badge">
+    <span>
       {can("payouts:read") ? <Link to={`/payouts/${p.payout.id}`}>Payout {p.payout.status_label.toLowerCase()}</Link> : <>Payout {p.payout.status_label.toLowerCase()}</>}
       {p.payout.paid_at ? (
         <>
@@ -131,7 +131,7 @@ export function PaymentDetailPage() {
             { term: "Payout", value: payoutValue },
             { term: "Dispute", value: disputeValue },
             { term: "Refunded", value: p.refunded_cents > 0 ? <Money cents={p.refunded_cents} /> : <span className="muted">None</span> },
-            { term: "Payment id", value: <span className="mono">{p.id}</span> },
+            { term: "Payment ID", value: <span className="mono">{p.id}</span> },
           ]}
         />
       </section>

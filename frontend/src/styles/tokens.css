@@ -16,7 +16,7 @@
   --color-ink: #1a1917;
   --color-ink-secondary: #44423d;
   --color-ink-muted: #666259;
-  --color-ink-faint: #8f8b82;
+  --color-ink-faint: #6f6b62;
   --color-ink-inverse: #ffffff;
 
   /* Accent */
@@ -29,7 +29,7 @@
   /* Semantic, for state only */
   --color-success: #1b7a4a;
   --color-success-soft: #e4f3ea;
-  --color-warning: #9a6700;
+  --color-warning: #875a00;
   --color-warning-soft: #fbf0d4;
   --color-danger: #b42318;
   --color-danger-soft: #fbe9e6;

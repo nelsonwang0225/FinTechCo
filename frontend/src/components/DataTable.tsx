@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconArrowDown, IconArrowUp, IconArrowUpDown } from "../layout/icons";
 
 export interface Column<Row> {
@@ -41,8 +41,24 @@ function cellClass<Row>(col: Column<Row>): string | undefined {
  * Headers stick below the top bar while a long table scrolls.
  */
 export function DataTable<Row>({ columns, rows, rowKey, caption, sort, onSort, onRowClick, loading }: DataTableProps<Row>) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [scrolls, setScrolls] = useState(false);
+  // When the table is wider than its container, let the wrap scroll sideways so no column becomes unreachable.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => {
+      const table = el.querySelector("table");
+      if (!table) return;
+      setScrolls(table.getBoundingClientRect().width > el.clientWidth + 1);
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rows, columns.length]);
   return (
-    <div className={`table-wrap${loading ? " table-loading" : ""}`} aria-busy={loading || undefined}>
+    <div ref={wrapRef} className={`table-wrap${scrolls ? " table-wrap-scroll" : ""}${loading ? " table-loading" : ""}`} aria-busy={loading || undefined}>
       <table className="table">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
