@@ -55,7 +55,7 @@ Commit: `Add payments list, attempts tab, payment detail timeline and investigat
 
 ## Phase 5 — Payouts and reconciliation
 Goal: payout list and detail reconcile exactly to the ledger; the constituent CSV downloads.
-- `GET /api/payouts` (status filter, pagination, status rank then date desc) plus `summary {available_cents, pending_cents, next_payout {date, amount_cents}, as_of}`; `GET /api/payouts/{id}` (masked destination string, buckets, total, `reconciled`, every movement with payment/order links); `GET /api/payouts/{id}/export.csv` (`reports:financial`; one row per movement; records an `export` event).
+- `GET /api/payouts` (status and date-range filters, pagination, status rank then date desc) plus `summary {available_cents, pending_cents, next_payout {date, amount_cents}, as_of}`; `GET /api/payouts/{id}` (masked destination string, buckets, total, `reconciled`, every movement with payment/order links); `GET /api/payouts/{id}/export.csv` (`reports:financial`; one row per movement; records an `export` event). Reconciliation and the derived next payout live in `db/queries/payouts.py`; the timeline derivation written in Phase 4 lives in `db/queries/payments.py`.
 - Frontend: Payouts list, "Funds available for payout" card (as-of label, never "balance"), upcoming payout card, detail with reconciliation table and Download CSV.
 - Tests: DoD 5 (every payout of every merchant reconciles in DB, response and CSV; CSV row count equals movement count; Daniel 200, Maya 403, Priya 404).
 Commit: `Add payouts with exact ledger reconciliation and movement CSV export`
@@ -71,7 +71,7 @@ Commit: `Add overview with derived financial summary and collected-volume chart`
 Goal: every remaining section works end to end; no "coming soon" anywhere.
 - Customers: directory (name, email, reference, first payment, recent activity derived; search; pagination) and detail with payments and refunds tables. Guests are not customers.
 - Disputes: queue (disputed amount, linked payment, reason, status, response deadline with "due in N days" from the clock), detail with case history derived from lifecycle timestamps plus notes, `POST /api/disputes/{id}/notes`. No evidence submission, no resolution actions.
-- Reports: `payments.csv`, `attempts.csv` (outcomes and recorded reasons), `payouts.csv` (one row per payout with buckets and total), `refunds.csv`; each reuses its list query builder with the same filters and the active merchant; Reports page cards expose each report's filters; the Payments/Attempts Export buttons point at the first two with current filters.
+- Reports: `payments.csv` (Payments list filters), `attempts.csv` (outcome, channel, location, date range, search; outcomes and recorded reasons per row), `payouts.csv` (payout date range and status; one row per payout with buckets and total), `refunds.csv` (date range, status, reason); each reuses its list query builder with the same filters and the active merchant; Reports page cards expose each report's filters; the Payments/Attempts Export buttons point at the first two with current filters.
 - Settings (admin): Business profile (name, legal name, support email, reporting timezone, payout schedule, masked destination, locations), Team (memberships with role labels), Activity (notes and exports with actor, subject link and time). Read-only.
 - Tests: DoD 6 (every export row satisfies every filter and belongs to the merchant; row count equals the filtered count; permissions per matrix), shared-email isolation, DoD 3 and 4 extended to customers and disputes, settings scope.
 Commit: `Add customers, disputes, CSV reports and settings`
@@ -81,12 +81,12 @@ Goal: finished feel and a recorded Definition of Done run.
 - State audit on every page (skeleton, empty, error, 403, 404, saved), focus order and visible rings, `aria-sort`/`aria-busy`, status text, column widths and timestamp readability on Payments and payment detail, consistent wording, `prefers-reduced-motion`.
 - Fresh-clone rehearsal: clone to a temp dir, `make setup`, `make reset`, `make run`, sign in as Maya, `make test`. Restart check: add a note, stop and start the API, note still present.
 - `tests/test_dod_09` (Makefile targets) and `test_dod_10` (boundary scan, route-path scan, forbidden-key walk over every GET response as every role, no `GROUP BY` over outcome/failure code, `BarChart` import allowlist).
-- `docs/ACCEPTANCE.md` recording each of the ten checks with command, result and evidence, including the checksum comparison and the scan output with its documented scope.
+- `docs/ACCEPTANCE.md` recording each of the ten checks with command, result and evidence, including the checksum comparison and the scan output with its documented scope (and the note that `docs/SPEC.md`, `docs/PLAN.md`, `CLAUDE.md` and the scan's own tests contain the vocabulary by necessity).
 Commit: `Polish states and accessibility; record acceptance checklist run`
 
 ## Open questions (defaults in effect unless changed)
 
 1. **Demo clock date.** Fixed at Mon 2026-10-05 09:12 CT. Say if the live demo should show a different date; it is one constant plus a reseed.
-2. **Role matrix where the brief is silent.** Business administrator can add notes; Operations manager has no Payouts pages (Overview tiles still show funds available and next payout); Finance manager has no Customers or Disputes pages; Read-only analyst reads every view including Payouts but has no exports, settings or writes. Table in `CLAUDE.md`.
+2. **Role matrix where the brief is silent.** Business administrator can add notes and run the operational exports; Operations manager can run the operational exports (payment register, attempt export) but has no Payouts pages (Overview tiles still show funds available and next payout); Finance manager can run all four exports but has no Customers or Disputes pages; Read-only analyst reads every view including Payouts but has no exports, settings or writes. Table in `CLAUDE.md`.
 3. **The read-only analyst.** Named Sam Okafor, with memberships at Alder & Loom and Copper Finch Coffee so the third merchant is reachable in the persona selector.
 4. **Cross-merchant requests return 404**, not 403, so another merchant's record ids are never confirmed to exist. Switch to 403 if the demo should visibly say "forbidden".
