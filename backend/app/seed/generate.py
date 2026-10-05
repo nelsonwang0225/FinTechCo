@@ -14,7 +14,7 @@ from app.core import money
 from app.core.ids import new_id
 from app.core.tz import CHICAGO, UTC, chicago_local, to_iso
 from app.seed import scenario as S
-from app.seed.scenario import LocationSpec, MerchantSpec, WindowOverride
+from app.seed.scenario import LocationSpec, MerchantSpec, ScriptedWindow, WindowOverride
 
 
 # --------------------------------------------------------------------------- rows
@@ -251,6 +251,10 @@ def _midnight_safe(dt: datetime) -> datetime:
     return dt
 
 
+def _within(value: int, bounds: tuple[int, int] | None) -> bool:
+    return bounds is None or bounds[0] <= value <= bounds[1]
+
+
 def _describe(items: list[S.CatalogItem]) -> str:
     names = [i.name for i in items]
     if len(names) == 1:
@@ -274,6 +278,7 @@ class Seeder:
         self.seeded_customer_ids: dict[tuple[str, str], str] = {}
         self.payment_items: dict[str, list[S.CatalogItem]] = {}
         self.attempts_by_payment: dict[str, list[AttemptRow]] = {}
+        self.window_payments: dict[tuple[str, str], list[tuple[str, PaymentRow]]] = {}
         self.pending_cutoff = S.AS_OF - timedelta(minutes=S.PENDING_WINDOW_MINUTES)
 
     # -- ids -------------------------------------------------------------------------
@@ -342,6 +347,17 @@ class Seeder:
                 return o
         return None
 
+    def _scripted(self, slug: str, channel: str, at: datetime) -> ScriptedWindow | None:
+        for w in S.SCRIPTED_WINDOWS:
+            if w.merchant_slug == slug and w.channel == channel and w.start <= at < w.end:
+                return w
+        return None
+
+    def _scripted_slot(self, slug: str, channel: str, slot_start: datetime) -> bool:
+        """Generated traffic is suppressed in any hour slot a scripted window overlaps."""
+        slot_end = slot_start + timedelta(hours=1)
+        return any(w.merchant_slug == slug and w.channel == channel and w.start < slot_end and slot_start < w.end for w in S.SCRIPTED_WINDOWS)
+
     def _open_locations(self, spec: MerchantSpec, slug: str, day: date, hour: int) -> list[LocationRow]:
         out = []
         for row, loc in self.location_rows[slug]:
@@ -366,12 +382,16 @@ class Seeder:
         tax = (subtotal * spec.tax_bps + 5000) // 10000
         return items, subtotal + tax
 
-    def _method(self, spec: MerchantSpec, channel: str) -> tuple[str, str, str, str | None]:
-        brand = _weighted_pairs(self.rng, S.CARD_BRANDS)
-        last4 = f"{self.rng.randint(0, 9999):04d}"
-        if self.rng.random() < spec.wallet_share[channel]:
-            return "wallet", brand, last4, _weighted_pairs(self.rng, S.WALLET_TYPES)
+    @staticmethod
+    def _method_with(rng: random.Random, spec: MerchantSpec, channel: str) -> tuple[str, str, str, str | None]:
+        brand = _weighted_pairs(rng, S.CARD_BRANDS)
+        last4 = f"{rng.randint(0, 9999):04d}"
+        if rng.random() < spec.wallet_share[channel]:
+            return "wallet", brand, last4, _weighted_pairs(rng, S.WALLET_TYPES)
         return "card", brand, last4, None
+
+    def _method(self, spec: MerchantSpec, channel: str) -> tuple[str, str, str, str | None]:
+        return self._method_with(self.rng, spec, channel)
 
     def _new_payment(self, spec: MerchantSpec, channel: str, created: datetime, location_id: str | None,
                      customer_id: str | None = None, items: list[S.CatalogItem] | None = None, amount: int | None = None) -> PaymentRow:
@@ -430,6 +450,8 @@ class Seeder:
                 next_at = _midnight_safe(completed + timedelta(seconds=self.rng.randint(*delay_range)))
                 if next_at > S.AS_OF - timedelta(seconds=30):
                     break
+                if self._scripted(spec.slug, payment.channel, next_at) is not None:
+                    break  # generated retries never cross into a scripted window
                 if code in S.RETRY_SAME_CARD_CODES and self.rng.random() < 0.6:
                     pass  # shopper fixes the entry and retries the same card
                 else:
@@ -459,6 +481,8 @@ class Seeder:
                         slot_start = chicago_local(day.year, day.month, day.day, hour)
                         if slot_start >= S.AS_OF:
                             continue
+                        if self._scripted_slot(spec.slug, channel, slot_start):
+                            continue
                         override = self._override(spec.slug, channel, slot_start + timedelta(minutes=30))
                         expected = daily_expected * hours[hour] / total_weight * (override.volume_multiplier if override else 1.0)
                         if channel == "in_store":
@@ -477,6 +501,101 @@ class Seeder:
                             payment = self._new_payment(spec, channel, created, location_id)
                             self._attempts_for(spec, payment, created)
             day += timedelta(days=1)
+
+    # -- scripted windows ---------------------------------------------------------------
+    _SHAPE_DECLINES: dict[str, int] = {"succeeded": 0, "pending": 0, "failed": 1, "failed_then_succeeded": 1,
+                                       "failed_twice": 2, "failed_twice_then_succeeded": 2}
+    _SHAPE_RECOVERS: frozenset[str] = frozenset({"failed_then_succeeded", "failed_twice_then_succeeded"})
+
+    def _window_basket(self, rng: random.Random, spec: MerchantSpec, window: ScriptedWindow) -> tuple[list[S.CatalogItem], int]:
+        cap = window.max_item_price_cents
+        catalog = [i for i in spec.catalog if cap is None or i.price_cents <= cap]
+        for _ in range(1000):
+            n = rng.choices(range(1, len(spec.items_per_order) + 1), weights=spec.items_per_order, k=1)[0]
+            items = [rng.choice(catalog) for _ in range(n)]
+            subtotal = sum(i.price_cents for i in items)
+            amount = subtotal + (subtotal * spec.tax_bps + 5000) // 10000
+            if _within(amount, window.basket_cents):
+                return items, amount
+        raise ValueError(f"{window.merchant_slug}/{window.channel}: no basket within {window.basket_cents}")
+
+    def _window_baskets(self, rng: random.Random, spec: MerchantSpec, window: ScriptedWindow, shapes: list[str]) -> list[tuple[list[S.CatalogItem], int]]:
+        """One basket per payment, redrawn until the declined and recovered totals fall in the window's ranges."""
+        for _ in range(5000):
+            baskets = [self._window_basket(rng, spec, window) for _ in shapes]
+            declined = sum(amount for shape, (_, amount) in zip(shapes, baskets) if self._SHAPE_DECLINES[shape])
+            recovered = sum(amount for shape, (_, amount) in zip(shapes, baskets) if shape in self._SHAPE_RECOVERS)
+            if _within(declined, window.failed_basket_total_cents) and _within(recovered, window.recovered_basket_total_cents):
+                return baskets
+        raise ValueError(f"{window.merchant_slug}/{window.channel}: basket totals never reached their configured ranges")
+
+    def _window_attempts(self, rng: random.Random, spec: MerchantSpec, payment: PaymentRow, shape: str, created: datetime, codes: list[str]) -> None:
+        """The attempt chain for one scripted payment; each retry is a new attempt record."""
+        attempts: list[AttemptRow] = []
+        method = self._method_with(rng, spec, payment.channel)
+        at = created
+        if shape == "pending":
+            attempts.append(AttemptRow(new_id("attempt", rng), payment.merchant_id, payment.id, 1, *method, "pending", None, None, to_iso(at), None))
+        else:
+            declines = self._SHAPE_DECLINES[shape]
+            recovers = shape in self._SHAPE_RECOVERS
+            delays = S.SCRIPTED_RETRY_DELAYS.get(shape, ())
+            if len(delays) != max(0, declines - (0 if recovers else 1)):
+                raise ValueError(f"{shape}: {len(delays)} retry delays for {declines} declined attempts")
+            number = 1
+            for k in range(declines):
+                code = codes.pop(0)
+                completed = at + timedelta(seconds=rng.randint(*S.ATTEMPT_DURATION_SECONDS))
+                attempts.append(AttemptRow(new_id("attempt", rng), payment.merchant_id, payment.id, number, *method, "failed", code, S.DECLINE_CODES[code],
+                                           to_iso(at), to_iso(completed)))
+                if k < len(delays):
+                    at = _midnight_safe(completed + timedelta(seconds=rng.randint(*delays[k])))
+                    if not (code in S.RETRY_SAME_CARD_CODES and rng.random() < 0.6):
+                        method = self._method_with(rng, spec, payment.channel)
+                    number += 1
+            if recovers or declines == 0:
+                completed = at + timedelta(seconds=rng.randint(*S.ATTEMPT_DURATION_SECONDS))
+                attempts.append(AttemptRow(new_id("attempt", rng), payment.merchant_id, payment.id, number, *method, "succeeded", None, None, to_iso(at), to_iso(completed)))
+        self.attempts_by_payment[payment.id] = attempts
+        self.data.attempts.extend(attempts)
+
+    def build_scripted_windows(self) -> None:
+        """Attempt histories told exactly for one merchant channel at a time (``scenario.SCRIPTED_WINDOWS``).
+
+        Each window draws from its own ``random.Random`` seeded from the window's identity, so the history
+        inside a window does not depend on the traffic generated around it.
+        """
+        for window in S.SCRIPTED_WINDOWS:
+            spec = next(m for m in S.MERCHANTS if m.slug == window.merchant_slug)
+            mid = self.merchant_ids[spec.slug]
+            rng = random.Random(f"{S.RNG_SEED}:{window.merchant_slug}:{window.channel}:{to_iso(window.start)}")
+            plan: list[tuple[str, datetime]] = []
+            for seg in window.segments:
+                counts = (("succeeded", seg.succeeded), ("failed_then_succeeded", seg.failed_then_succeeded),
+                          ("failed_twice_then_succeeded", seg.failed_twice_then_succeeded), ("failed", seg.failed),
+                          ("failed_twice", seg.failed_twice), ("pending", seg.pending))
+                shapes = [shape for shape, count in counts for _ in range(count)]
+                rng.shuffle(shapes)
+                span = int((seg.end - seg.start).total_seconds())
+                starts = sorted(rng.randrange(span) for _ in shapes)
+                plan.extend((shape, _midnight_safe(seg.start + timedelta(seconds=s))) for shape, s in zip(shapes, starts))
+            declines = sum(self._SHAPE_DECLINES[shape] for shape, _ in plan)
+            if len(window.failure_codes) != declines:
+                raise ValueError(f"{window.merchant_slug}/{window.channel}: {len(window.failure_codes)} failure codes for {declines} declined attempts")
+            codes = list(window.failure_codes)
+            rng.shuffle(codes)
+            baskets = self._window_baskets(rng, spec, window, [shape for shape, _ in plan])
+            named = [i for i in range(len(plan)) if rng.random() >= spec.guest_share]
+            customers = dict(zip(named, (c.id for c in rng.sample(self.pools[spec.slug], len(named)))))
+            location_id = self.location_rows[spec.slug][0][0].id if window.channel == "in_store" else None
+            recorded = self.window_payments.setdefault((window.merchant_slug, window.channel), [])
+            for index, ((shape, created), (items, amount)) in enumerate(zip(plan, baskets)):
+                payment = PaymentRow(new_id("payment", rng), mid, customers.get(index), location_id, "", _describe(items), amount, money.CURRENCY,
+                                     window.channel, to_iso(created))
+                self.payment_items[payment.id] = items
+                self.data.payments.append(payment)
+                recorded.append((shape, payment))
+                self._window_attempts(rng, spec, payment, shape, created, codes)
 
     def build_scripted_payments(self) -> None:
         """A handful of shopper stories told exactly."""
@@ -609,9 +728,14 @@ class Seeder:
                         if created <= completed:
                             created = completed + timedelta(hours=3)
                     else:
-                        created = _midnight_safe(completed + timedelta(days=self.rng.randint(*S.REFUND_DELAY_DAYS), minutes=self.rng.randint(0, 1439)))
+                        local_day = (completed.astimezone(CHICAGO) + timedelta(days=self.rng.randint(*S.REFUND_DELAY_DAYS))).date()
+                        minute = self.rng.randint(S.REFUND_HOURS[0] * 60, S.REFUND_HOURS[1] * 60 - 1)
+                        created = chicago_local(local_day.year, local_day.month, local_day.day, minute // 60, minute % 60, self.rng.randint(0, 59))
                     if created >= S.AS_OF - timedelta(minutes=30):
-                        created = _midnight_safe(S.AS_OF - timedelta(hours=self.rng.randint(2, 30)))
+                        # Would fall after the clock: issued on one of the last few days instead, in business hours.
+                        local_day = S.AS_OF_DAY - timedelta(days=self.rng.randint(1, 3))
+                        minute = self.rng.randint(S.REFUND_HOURS[0] * 60, S.REFUND_HOURS[1] * 60 - 1)
+                        created = chicago_local(local_day.year, local_day.month, local_day.day, minute // 60, minute % 60, self.rng.randint(0, 59))
                         if created <= completed:
                             continue
                     items = self.payment_items[p.id]
@@ -773,6 +897,29 @@ class Seeder:
                     at = S.AS_OF - timedelta(hours=self.rng.randint(1, 20))
                 actor = self.rng.choice(writers[spec.slug])
                 self.data.note_events.append(NoteEventRow(self.new("note_event"), mid, "note", actor, p.id, None, None, None, next_text(), to_iso(at)))
+        # A few of the app-checkout payments from 1-2 October carry notes by the operations manager.
+        maya = self.user_ids["maya.chen@alder-loom.example.com"]
+        app_history = self.window_payments.get(("alder-loom", "mobile_app"), [])
+        first_day_end = to_iso(chicago_local(2026, 10, 2, 0, 0))
+
+        def first_of(shape: str) -> PaymentRow:
+            return next(p for s, p in app_history if s == shape and p.created_at < first_day_end)
+
+        def last_of(shape: str) -> PaymentRow:
+            return next(p for s, p in reversed(app_history) if s == shape)
+
+        for payment, body, at in (
+            (first_of("failed_twice_then_succeeded"),
+             "Customer contacted support after two declined attempts in the app. Asked them to try once more; the third attempt completed and the order is confirmed.",
+             chicago_local(2026, 10, 2, 9, 24, 41)),
+            (first_of("failed_then_succeeded"),
+             "Customer retried in the app and the payment completed. The first attempt never captured, so there is nothing to reconcile.",
+             chicago_local(2026, 10, 2, 9, 31, 8)),
+            (last_of("failed_twice"),
+             "Customer says both attempts were declined in the app and the same card worked for them elsewhere. They have not placed the order again; nothing was captured on this payment.",
+             chicago_local(2026, 10, 2, 14, 2, 55)),
+        ):
+            self.data.note_events.append(NoteEventRow(self.new("note_event"), payment.merchant_id, "note", maya, payment.id, None, None, None, body, to_iso(at)))
         for d in self.data.disputes:
             if d.status != "under_review":
                 continue
@@ -799,6 +946,7 @@ class Seeder:
         self.build_master_data()
         self.build_customers()
         self.build_payments()
+        self.build_scripted_windows()
         self.build_scripted_payments()
         self.finalize_payment_order()
         self.build_refunds()

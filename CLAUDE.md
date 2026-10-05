@@ -148,7 +148,7 @@ Entities: Merchant, Location, User, Membership, Customer, Payment, PaymentAttemp
 
 - One `random.Random(FIXED_SEED)` owned by the seeder; no module-level `random`, no `uuid4`, no wall clock, sorted iteration only. Generation is a pure `build_dataset()` of dataclasses, written in fixed table order in one transaction, then `verify.py` runs the invariant suite (one success per payment, movement pairs, payout reconciliation, merchant consistency, formats) and fails the seed on any violation.
 - `make seed` and `make reset` print a SHA-256 over every table's rows ordered by primary key (excluding the `seed_meta` checksum row). `tests/test_seed_reproducible.py` holds the golden value; update it only for an intentional scenario change and say so in the commit message. The seed CLI prints row counts per table and the checksum, nothing else.
-- Scenario parameters live in `app/seed/scenario.py` as plain data (`first_attempt_outcome_weights`, `window_overrides`, `decline_codes`, schedules, catalogues of names and products). Change the scenario there, reseed, and update the golden checksum in the same commit.
+- Scenario parameters live in `app/seed/scenario.py` as plain data (`first_attempt_outcome_weights`, `window_overrides`, `scripted_windows` for stretches of attempt history told exactly, `decline_codes`, `refund_hours`, schedules, catalogues of names and products). Scripted windows draw from their own child RNG, so the history inside one does not depend on the traffic generated around it; suppressing their slots still shifts the generated draws after them, so the golden checksum changes with them. Change the scenario there, reseed, and update the golden checksum in the same commit.
 
 ## Guardrails
 

@@ -380,18 +380,6 @@ class WindowOverride:
 
 
 WINDOW_OVERRIDES: tuple[WindowOverride, ...] = (
-    WindowOverride(
-        merchant_slug="alder-loom",
-        channel="mobile_app",
-        start=chicago_local(2026, 10, 1, 15, 0),
-        end=chicago_local(2026, 10, 2, 11, 0),
-        failure_share=0.84,
-        code_weights={"issuer_unavailable": 0.86, "processing_error": 0.06, "insufficient_funds": 0.04, "do_not_honor": 0.04},
-        volume_multiplier=1.8,
-        retry_probability=0.85,
-        retry_failure_share=0.10,
-        retry_delay_seconds=(240, 3300),
-    ),
     # Labor Day week runs quieter online for the homeware retailer.
     WindowOverride(
         merchant_slug="alder-loom",
@@ -401,6 +389,89 @@ WINDOW_OVERRIDES: tuple[WindowOverride, ...] = (
         failure_share=FIRST_ATTEMPT_FAILURE_SHARE["website"],
         code_weights=DECLINE_CODE_WEIGHTS,
         volume_multiplier=0.75,
+    ),
+)
+
+
+@dataclass(frozen=True)
+class ScriptedSegment:
+    """How many payments start between two instants, by the shape of their attempt chain."""
+
+    start: datetime
+    end: datetime
+    succeeded: int = 0  # one attempt, succeeded
+    failed_then_succeeded: int = 0  # declined once, retry succeeded
+    failed_twice_then_succeeded: int = 0  # declined twice, third attempt succeeded
+    failed: int = 0  # declined once, no retry
+    failed_twice: int = 0  # declined twice, no further attempt
+    pending: int = 0  # one attempt still in flight at the clock
+
+
+@dataclass(frozen=True)
+class ScriptedWindow:
+    """Attempt history told exactly for one merchant channel between two instants.
+
+    Generated traffic for that channel is suppressed inside the window; the segments say
+    what is there instead. Baskets come from the catalogue items at or under
+    ``max_item_price_cents`` and are redrawn until each payment and the two totals fall in
+    their configured ranges.
+    """
+
+    merchant_slug: str
+    channel: str
+    start: datetime
+    end: datetime
+    segments: tuple[ScriptedSegment, ...]
+    failure_codes: tuple[str, ...]  # one per declined attempt, dealt out in a shuffled order
+    max_item_price_cents: int | None = None
+    basket_cents: tuple[int, int] | None = None  # accepted amount range for one payment
+    failed_basket_total_cents: tuple[int, int] | None = None  # payments with at least one declined attempt
+    recovered_basket_total_cents: tuple[int, int] | None = None  # ... whose retry succeeded
+
+
+# Seconds between a declined attempt's completion and the next attempt, per chain shape.
+SCRIPTED_RETRY_DELAYS: dict[str, tuple[tuple[int, int], ...]] = {
+    "failed_then_succeeded": ((240, 3120),),
+    "failed_twice_then_succeeded": ((240, 1200), (300, 1800)),
+    "failed_twice": ((300, 2100),),
+}
+
+SCRIPTED_WINDOWS: tuple[ScriptedWindow, ...] = (
+    # Alder & Loom's app checkout from Thursday afternoon into Friday morning: most declines recorded as issuer_unavailable.
+    ScriptedWindow(
+        merchant_slug="alder-loom",
+        channel="mobile_app",
+        start=chicago_local(2026, 10, 1, 15, 0),
+        end=chicago_local(2026, 10, 2, 11, 0),
+        segments=(
+            ScriptedSegment(chicago_local(2026, 10, 1, 15, 0), chicago_local(2026, 10, 1, 22, 30),
+                            succeeded=1, failed_then_succeeded=15, failed_twice_then_succeeded=2, failed=5, failed_twice=2),
+            ScriptedSegment(chicago_local(2026, 10, 2, 0, 5), chicago_local(2026, 10, 2, 10, 0),
+                            succeeded=1, failed_then_succeeded=6, failed=2),
+        ),
+        failure_codes=("issuer_unavailable",) * 29 + ("processing_error",) * 3 + ("do_not_honor",) * 2 + ("insufficient_funds", "authentication_failed"),
+        max_item_price_cents=36000,
+        basket_cents=(2500, 60000),
+        failed_basket_total_cents=(500000, 700000),
+        recovered_basket_total_cents=(350000, 500000),
+    ),
+    # A quiet Sunday for Copper Finch's app: a handful of orders, two of them declined.
+    ScriptedWindow(
+        merchant_slug="copper-finch",
+        channel="mobile_app",
+        start=chicago_local(2026, 9, 27, 0, 0),
+        end=chicago_local(2026, 9, 28, 0, 0),
+        segments=(ScriptedSegment(chicago_local(2026, 9, 27, 7, 30), chicago_local(2026, 9, 27, 11, 0), succeeded=2, failed_then_succeeded=1, failed=1),),
+        failure_codes=("do_not_honor", "insufficient_funds"),
+    ),
+    # Copper Finch's website on the morning of the clock: two orders still in flight, nothing completed yet.
+    ScriptedWindow(
+        merchant_slug="copper-finch",
+        channel="website",
+        start=chicago_local(2026, 10, 5, 0, 0),
+        end=AS_OF,
+        segments=(ScriptedSegment(chicago_local(2026, 10, 5, 8, 36), chicago_local(2026, 10, 5, 9, 6), pending=2),),
+        failure_codes=(),
     ),
 )
 
@@ -414,6 +485,8 @@ REFUND_REASON_WEIGHTS: dict[str, float] = {
 }
 REFUND_FULL_SHARE = 0.70
 REFUND_DELAY_DAYS = (1, 12)
+# Refunds are issued by staff during business hours, Chicago time: from the start hour up to the end hour.
+REFUND_HOURS = (8, 20)
 PENDING_REFUNDS_PER_MERCHANT: dict[str, int] = {"alder-loom": 2, "juniper-trail": 1, "copper-finch": 0}
 
 
