@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimestamp, greetingFor, parseDollarsToCents } from "./format";
+import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
@@ -26,6 +26,11 @@ describe("timestamps are rendered in America/Chicago", () => {
   it("formats a UTC instant as Chicago local time", () => {
     expect(formatTimestamp("2026-09-22T19:14:00Z")).toBe("Sep 22, 2:14 PM");
     expect(formatTimestamp("2025-09-22T19:14:00Z", "2026-10-05T14:12:00Z")).toBe("Sep 22, 2025, 2:14 PM");
+  });
+  it("renders full timestamps and same-day times with seconds and the zone", () => {
+    expect(formatTimestampFull("2026-09-22T19:14:53Z")).toBe("Sep 22, 2026, 2:14:53 PM CDT");
+    expect(formatTimeFull("2026-09-22T19:14:53Z")).toBe("2:14:53 PM CDT");
+    expect(formatTimeFull("2026-11-02T19:14:53Z")).toBe("1:14:53 PM CST");
   });
   it("buckets late evening Chicago instants on the right day", () => {
     expect(chicagoDate("2026-09-30T04:30:00Z")).toBe("2026-09-29");

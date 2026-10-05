@@ -41,13 +41,13 @@ export function PaymentDetailPage() {
     { key: "outcome", header: "Outcome", render: (a) => <StatusBadge status={a.outcome} label={a.outcome_label} /> },
     { key: "reason", header: "Recorded reason", render: (a) => a.failure_message ?? <span className="muted">—</span> },
     { key: "method", header: "Method", render: (a) => a.method.label },
-    { key: "completed", header: "Completed", render: (a) => <Timestamp iso={a.completed_at} mode="full" /> },
+    { key: "completed", header: "Completed", render: (a) => <Timestamp iso={a.completed_at} mode="full" sameDayAs={a.created_at} /> },
   ];
   const refundColumns: Column<RefundItem>[] = [
     { key: "at", header: "Requested", render: (r) => <Timestamp iso={r.created_at} mode="full" /> },
     { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} label={r.status_label} /> },
     { key: "reason", header: "Reason", render: (r) => r.reason_label },
-    { key: "completed", header: "Completed", render: (r) => <Timestamp iso={r.completed_at} mode="full" /> },
+    { key: "completed", header: "Completed", render: (r) => <Timestamp iso={r.completed_at} mode="full" sameDayAs={r.created_at} /> },
     { key: "amount", header: "Amount", align: "right", render: (r) => <Money cents={-r.amount_cents} sign /> },
   ];
 
@@ -129,6 +129,26 @@ export function PaymentDetailPage() {
         />
       </section>
 
+      <div className="detail-stack detail-tables">
+        <section aria-labelledby="attempts-heading">
+          <h2 id="attempts-heading" className="section-title">
+            Attempts
+          </h2>
+          <DataTable caption="Payment attempts" columns={attemptColumns} rows={p.attempts} rowKey={(a) => a.id} />
+        </section>
+
+        <section aria-labelledby="refunds-heading">
+          <h2 id="refunds-heading" className="section-title">
+            Refunds
+          </h2>
+          {p.refunds.length === 0 ? (
+            <EmptyState title="No refunds" body="Refunds issued against this payment appear here with their reason." />
+          ) : (
+            <DataTable caption="Refunds" columns={refundColumns} rows={p.refunds} rowKey={(r) => r.id} />
+          )}
+        </section>
+      </div>
+
       <div className="detail-grid">
         <section className="card" aria-labelledby="timeline-heading">
           <h2 id="timeline-heading" className="section-title">
@@ -138,24 +158,6 @@ export function PaymentDetailPage() {
         </section>
 
         <div className="detail-stack">
-          <section aria-labelledby="attempts-heading">
-            <h2 id="attempts-heading" className="section-title">
-              Attempts
-            </h2>
-            <DataTable caption="Payment attempts" columns={attemptColumns} rows={p.attempts} rowKey={(a) => a.id} />
-          </section>
-
-          <section aria-labelledby="refunds-heading">
-            <h2 id="refunds-heading" className="section-title">
-              Refunds
-            </h2>
-            {p.refunds.length === 0 ? (
-              <EmptyState title="No refunds" body="Refunds issued against this payment appear here with their reason." />
-            ) : (
-              <DataTable caption="Refunds" columns={refundColumns} rows={p.refunds} rowKey={(r) => r.id} />
-            )}
-          </section>
-
           <section className="card" aria-labelledby="notes-heading">
             <h2 id="notes-heading" className="section-title">
               Investigation notes

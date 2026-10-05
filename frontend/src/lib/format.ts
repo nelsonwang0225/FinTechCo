@@ -77,6 +77,13 @@ const timeOnly = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   timeZoneName: "short",
 });
+const timeFull = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIMEZONE,
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
+});
 const yearOf = new Intl.DateTimeFormat("en-US", { timeZone: REPORTING_TIMEZONE, year: "numeric" });
 
 /** Compact table timestamp: "Sep 22, 2:14 PM"; the year is added when it differs from the reporting clock's year. */
@@ -95,6 +102,11 @@ export function formatTimestampFull(iso: string): string {
 
 export function formatTime(iso: string): string {
   return timeOnly.format(new Date(iso));
+}
+
+/** Time of day with seconds, for a detail row whose date is already on screen: "2:14:53 PM CDT". */
+export function formatTimeFull(iso: string): string {
+  return timeFull.format(new Date(iso));
 }
 
 /** A Chicago calendar date given as YYYY-MM-DD or an instant, as "Oct 6, 2026". */
