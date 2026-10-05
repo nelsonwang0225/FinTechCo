@@ -1,20 +1,97 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import type { Session } from "./api/types";
+import { PersonaBar } from "./dev/PersonaBar";
+import { PersonaChooser } from "./dev/PersonaChooser";
 import { AppShell } from "./layout/AppShell";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { PagePlaceholder } from "./pages/PagePlaceholder";
+import { RequirePermission } from "./session/RequirePermission";
+import { SessionProvider, useSession } from "./session/SessionProvider";
 
 export function App() {
   return (
-    <AppShell merchantName="FinTechCo Business">
+    <SessionProvider>
+      <Root />
+    </SessionProvider>
+  );
+}
+
+function Root() {
+  const { status, session } = useSession();
+  if (status === "loading") {
+    return (
+      <div className="boot" role="status" aria-live="polite">
+        Loading FinTechCo Business…
+      </div>
+    );
+  }
+  if (status === "anonymous" || !session) {
+    return <PersonaChooser />;
+  }
+  // Keyed by membership so switching persona remounts the whole product and nothing from the previous business stays on screen.
+  return (
+    <div className="dev-frame">
+      <PersonaBar />
+      <ProductApp key={session.membership_id} session={session} />
+    </div>
+  );
+}
+
+function ProductApp(_: { session: Session }) {
+  return (
+    <AppShell>
       <Routes>
         <Route path="/" element={<Navigate to="/overview" replace />} />
-        <Route path="/overview" element={<PagePlaceholder title="Overview" />} />
-        <Route path="/payments" element={<PagePlaceholder title="Payments" />} />
-        <Route path="/payouts" element={<PagePlaceholder title="Payouts" />} />
-        <Route path="/customers" element={<PagePlaceholder title="Customers" />} />
-        <Route path="/disputes" element={<PagePlaceholder title="Disputes" />} />
+        <Route
+          path="/overview"
+          element={
+            <RequirePermission permission="overview:read">
+              <PagePlaceholder title="Overview" />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/payments/*"
+          element={
+            <RequirePermission permission="payments:read">
+              <PagePlaceholder title="Payments" />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/payouts/*"
+          element={
+            <RequirePermission permission="payouts:read">
+              <PagePlaceholder title="Payouts" />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/customers/*"
+          element={
+            <RequirePermission permission="customers:read">
+              <PagePlaceholder title="Customers" />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/disputes/*"
+          element={
+            <RequirePermission permission="disputes:read">
+              <PagePlaceholder title="Disputes" />
+            </RequirePermission>
+          }
+        />
         <Route path="/reports" element={<PagePlaceholder title="Reports" />} />
-        <Route path="/settings" element={<PagePlaceholder title="Settings" />} />
-        <Route path="*" element={<PagePlaceholder title="Page not found" />} />
+        <Route
+          path="/settings/*"
+          element={
+            <RequirePermission permission="settings:read">
+              <PagePlaceholder title="Settings" />
+            </RequirePermission>
+          }
+        />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>
   );

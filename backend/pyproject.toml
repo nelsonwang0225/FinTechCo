@@ -1,5 +1,7 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# tests/boundary holds build-time checks that are run explicitly with `make check-boundary`.
 norecursedirs = ["tests/boundary", ".venv", "data"]
 addopts = "-p no:cacheprovider"
+filterwarnings = [
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]

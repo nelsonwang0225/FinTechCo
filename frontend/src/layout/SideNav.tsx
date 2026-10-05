@@ -1,17 +1,25 @@
 import { NavLink } from "react-router-dom";
+import type { Permission } from "../api/types";
 
-export const NAV_ITEMS = [
-  { to: "/overview", label: "Overview" },
-  { to: "/payments", label: "Payments" },
-  { to: "/payouts", label: "Payouts" },
-  { to: "/customers", label: "Customers" },
-  { to: "/disputes", label: "Disputes" },
-  { to: "/reports", label: "Reports" },
-  { to: "/settings", label: "Settings" },
-] as const;
+export interface NavItem {
+  to: string;
+  label: string;
+  /** Any one of these permissions shows the item. The backend enforces regardless. */
+  anyOf: Permission[];
+}
 
-export function SideNav({ visible }: { visible?: ReadonlySet<string> }) {
-  const items = visible ? NAV_ITEMS.filter((item) => visible.has(item.to)) : NAV_ITEMS;
+export const NAV_ITEMS: readonly NavItem[] = [
+  { to: "/overview", label: "Overview", anyOf: ["overview:read"] },
+  { to: "/payments", label: "Payments", anyOf: ["payments:read"] },
+  { to: "/payouts", label: "Payouts", anyOf: ["payouts:read"] },
+  { to: "/customers", label: "Customers", anyOf: ["customers:read"] },
+  { to: "/disputes", label: "Disputes", anyOf: ["disputes:read"] },
+  { to: "/reports", label: "Reports", anyOf: ["reports:operational", "reports:financial"] },
+  { to: "/settings", label: "Settings", anyOf: ["settings:read"] },
+];
+
+export function SideNav({ can }: { can: (permission: Permission) => boolean }) {
+  const items = NAV_ITEMS.filter((item) => item.anyOf.some(can));
   return (
     <nav className="sidenav" aria-label="Sections">
       <div className="brand">
