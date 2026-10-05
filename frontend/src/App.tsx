@@ -4,6 +4,7 @@ import { PersonaBar } from "./dev/PersonaBar";
 import { PersonaChooser } from "./dev/PersonaChooser";
 import { AppShell } from "./layout/AppShell";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { OverviewPage } from "./pages/overview/OverviewPage";
 import { PagePlaceholder } from "./pages/PagePlaceholder";
 import { PaymentDetailPage } from "./pages/payment-detail/PaymentDetailPage";
 import { PaymentsPage } from "./pages/payments/PaymentsPage";
@@ -50,7 +51,7 @@ function ProductApp(_: { session: Session }) {
           path="/overview"
           element={
             <RequirePermission permission="overview:read">
-              <PagePlaceholder title="Overview" />
+              <OverviewPage />
             </RequirePermission>
           }
         />

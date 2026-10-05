@@ -45,6 +45,8 @@ def test_fresh_seed_then_a_seeded_user_reaches_the_portal(tmp_path: Path) -> Non
         assert session["role"] == "operations_manager"
         assert "payments:read" in session["permissions"]
         assert c.get("/api/meta").status_code == 200
+        overview = c.get("/api/overview").json()
+        assert overview["greeting"] == {"salutation": "Good morning", "first_name": "Maya", "merchant_name": "Alder & Loom", "as_of": session["as_of"]}
 
 
 def test_ping_reports_a_missing_database(tmp_path: Path) -> None:

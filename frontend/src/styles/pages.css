@@ -364,3 +364,128 @@
   border-top: 2px solid var(--color-ink);
   font-weight: 650;
 }
+
+/* Overview */
+.cards-4 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.overview-loading {
+  opacity: 0.7;
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.section-head .section-title {
+  margin: 0;
+}
+.section-aside {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.chart-card {
+  margin-bottom: var(--space-5);
+}
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-sans);
+}
+.chart-grid line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.chart-tick,
+.chart-label {
+  fill: var(--color-ink-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-bar rect {
+  fill: var(--color-accent);
+}
+.chart-bar:hover rect {
+  fill: var(--color-accent-hover);
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.bucket-list {
+  margin: var(--space-4) 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+}
+.bucket-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.bucket-row dt {
+  color: var(--color-ink-muted);
+}
+.bucket-row dd {
+  margin: 0;
+}
+.attention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.attention-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.attention-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--color-neutral);
+}
+.attention-dispute_deadline .attention-dot {
+  background: var(--color-warning);
+}
+.attention-payout_in_transit .attention-dot {
+  background: var(--color-info);
+}
+.attention-refund_pending .attention-dot {
+  background: var(--color-neutral);
+}
+.attention-body {
+  min-width: 0;
+}
+.attention-title,
+.attention-detail,
+.attention-when {
+  margin: 0;
+}
+.attention-title {
+  font-weight: 600;
+}
+.attention-when {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+.attention-empty {
+  margin: 0;
+}
