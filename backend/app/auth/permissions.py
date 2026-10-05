@@ -38,12 +38,6 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "read_only_analyst": frozenset({"overview:read", "payments:read", "customers:read", "disputes:read", "payouts:read"}),
 }
 
-ROLE_LABELS: dict[str, str] = {
-    "business_admin": "Business admin",
-    "operations_manager": "Operations manager",
-    "finance_manager": "Finance manager",
-    "read_only_analyst": "Read-only analyst",
-}
 
 
 def permissions_for(role: str) -> list[str]:

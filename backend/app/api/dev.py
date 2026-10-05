@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Response
 
 from app.api.schemas.session import DevSessionRequest, PersonaMerchant, PersonaOption, PersonasResponse, SessionMerchant, SessionResponse
 from app.api.session import session_response
-from app.auth.permissions import ROLE_LABELS
+from app.core.labels import ROLE_LABELS
 from app.auth.session import principal_from_row, set_session_cookie
 from app.db.connection import get_conn
 from app.db.queries import access

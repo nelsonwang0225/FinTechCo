@@ -7,7 +7,8 @@ import sqlite3
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.schemas.session import SessionMerchant, SessionResponse, SessionUser
-from app.auth.permissions import ROLE_LABELS, permissions_for
+from app.auth.permissions import permissions_for
+from app.core.labels import ROLE_LABELS
 from app.auth.session import Principal, clear_session_cookie, current_principal
 from app.core import clock
 from app.core.tz import REPORTING_TIMEZONE, to_iso

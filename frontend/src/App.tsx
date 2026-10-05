@@ -5,6 +5,8 @@ import { PersonaChooser } from "./dev/PersonaChooser";
 import { AppShell } from "./layout/AppShell";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PagePlaceholder } from "./pages/PagePlaceholder";
+import { PaymentDetailPage } from "./pages/payment-detail/PaymentDetailPage";
+import { PaymentsPage } from "./pages/payments/PaymentsPage";
 import { RequirePermission } from "./session/RequirePermission";
 import { SessionProvider, useSession } from "./session/SessionProvider";
 
@@ -51,10 +53,18 @@ function ProductApp(_: { session: Session }) {
           }
         />
         <Route
-          path="/payments/*"
+          path="/payments"
           element={
             <RequirePermission permission="payments:read">
-              <PagePlaceholder title="Payments" />
+              <PaymentsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/payments/:paymentId"
+          element={
+            <RequirePermission permission="payments:read">
+              <PaymentDetailPage />
             </RequirePermission>
           }
         />
