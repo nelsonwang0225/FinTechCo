@@ -188,3 +188,16 @@ def test_anchor_payment_reads_as_the_brief_describes(seeded_conn: sqlite3.Connec
         "SELECT u.full_name FROM note_event n JOIN app_user u ON u.id = n.actor_user_id WHERE n.payment_id = ? AND n.kind = 'note'", (payment["id"],)
     ).fetchone()
     assert note["full_name"] == "Maya Chen"
+
+
+def test_refunds_are_issued_in_business_hours_after_the_sale(seeded_conn: sqlite3.Connection) -> None:
+    from app.core.tz import to_chicago
+
+    start_hour, end_hour = S.REFUND_HOURS
+    rows = seeded_conn.execute(
+        "SELECT r.created_at, a.completed_at FROM refund r JOIN payment_attempt a ON a.payment_id = r.payment_id AND a.outcome = 'succeeded'"
+    ).fetchall()
+    assert rows
+    for created_at, sale_completed_at in rows:
+        assert start_hour <= to_chicago(created_at).hour < end_hour, created_at
+        assert created_at > sale_completed_at

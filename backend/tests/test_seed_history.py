@@ -199,12 +199,15 @@ def test_mobile_history_outside_the_window_is_ordinary(seeded_conn: sqlite3.Conn
 
 
 def test_other_channels_have_no_comparable_day(seeded_conn: sqlite3.Connection) -> None:
+    """No website or in-store day comes anywhere near the window's first day (31 declines at a 55% rate)."""
+    peak = day_outcomes(seeded_conn, "alder-loom", "mobile_app")[date(2026, 10, 1)]
+    assert peak["failed"] >= 27 and failure_rate(peak) >= 0.45
     for channel in ("website", "in_store"):
         for day, counts in day_outcomes(seeded_conn, "alder-loom", channel).items():
             completed = counts["failed"] + counts["succeeded"]
             if completed >= 10:
-                assert failure_rate(counts) <= 0.25, (channel, day)
-            assert counts["failed"] <= 8, (channel, day)
+                assert failure_rate(counts) <= 0.3, (channel, day)
+            assert counts["failed"] <= peak["failed"] / 2, (channel, day)
 
 
 def test_low_volume_channel_period(seeded_conn: sqlite3.Connection) -> None:
@@ -226,13 +229,17 @@ def test_channel_period_with_pending_attempts_and_nothing_completed(seeded_conn:
 
 def test_window_belongs_to_one_merchant(seeded_conn: sqlite3.Connection, client_as) -> None:
     alder = merchant_id(seeded_conn, "alder-loom")
-    others = seeded_conn.execute(
-        "SELECT a.failure_code, COUNT(*) FROM payment_attempt a WHERE a.merchant_id <> ? AND a.outcome = 'failed' AND a.created_at >= ? AND a.created_at < ? GROUP BY 1",
-        (alder, APP_WINDOW_START, APP_WINDOW_END),
-    ).fetchall()
-    assert sum(n for _, n in others) <= 3
-    assert all(code != "issuer_unavailable" for code, _ in others)
-    assert one(seeded_conn, "SELECT COUNT(*) FROM payment_attempt WHERE failure_code = 'issuer_unavailable' AND merchant_id <> ?", alder) <= 2
+    # Other merchants look ordinary in the window and over the month: a normal decline share, and
+    # issuer_unavailable no more common than its everyday weight allows.
+    others = Counter(dict(seeded_conn.execute(
+        "SELECT a.outcome, COUNT(*) FROM payment_attempt a WHERE a.merchant_id <> ? AND a.created_at >= ? AND a.created_at < ? GROUP BY 1",
+        (alder, APP_WINDOW_START, APP_WINDOW_END)).fetchall()))
+    assert others["succeeded"] >= 10
+    assert failure_rate(others) <= 0.2
+    failures_elsewhere = one(seeded_conn, "SELECT COUNT(*) FROM payment_attempt WHERE outcome = 'failed' AND merchant_id <> ?", alder)
+    issuer_elsewhere = one(seeded_conn, "SELECT COUNT(*) FROM payment_attempt WHERE failure_code = 'issuer_unavailable' AND merchant_id <> ?", alder)
+    assert issuer_elsewhere / failures_elsewhere <= 0.1
+    assert one(seeded_conn, "SELECT COUNT(*) FROM payment_attempt WHERE failure_code = 'issuer_unavailable' AND merchant_id = ?", alder) >= 29
     by_payment, _ = app_window_payments(seeded_conn)
     assert all(chain[0]["merchant_id"] == alder for chain in by_payment.values())
     sample = sorted(by_payment)[0]

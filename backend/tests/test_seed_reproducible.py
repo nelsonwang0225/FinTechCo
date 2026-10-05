@@ -17,7 +17,7 @@ from app.seed import SeedResult, checksum, seed_database
 from app.seed import scenario as S
 from app.seed.__main__ import main as seed_cli
 
-GOLDEN_CHECKSUM = "faa161ba358010b01d1d3114f05c675ae8482d6db1bf8a423d3698789caa9270"
+GOLDEN_CHECKSUM = "cc88bde3744deba225c58aa07fa955185e2afc868c5608fb7710e7a1ef84d464"
 
 
 def test_seeding_twice_gives_the_same_checksum(template_seed: tuple[Path, SeedResult], tmp_path: Path) -> None:

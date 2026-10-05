@@ -529,6 +529,26 @@ class Seeder:
                 return baskets
         raise ValueError(f"{window.merchant_slug}/{window.channel}: basket totals never reached their configured ranges")
 
+    @staticmethod
+    def _segment_starts(rng: random.Random, spec: MerchantSpec, channel: str, seg: S.ScriptedSegment, n: int) -> list[datetime]:
+        """``n`` start instants inside the segment, hour buckets weighted by the channel's volume profile."""
+        weights = spec.hour_weights[channel]
+        buckets: list[tuple[datetime, datetime, float]] = []
+        cursor = seg.start.astimezone(CHICAGO).replace(minute=0, second=0, microsecond=0)
+        while cursor < seg.end:
+            bucket_start, bucket_end = max(cursor, seg.start), min(cursor + timedelta(hours=1), seg.end)
+            weight = weights[cursor.hour] * (bucket_end - bucket_start).total_seconds() / 3600
+            if weight > 0:
+                buckets.append((bucket_start, bucket_end, weight))
+            cursor += timedelta(hours=1)
+        if not buckets:
+            raise ValueError(f"{spec.slug}/{channel}: the segment covers no hour with volume")
+        starts: list[datetime] = []
+        for _ in range(n):
+            bucket_start, bucket_end, _weight = rng.choices(buckets, weights=[b[2] for b in buckets], k=1)[0]
+            starts.append(bucket_start + timedelta(seconds=rng.randrange(int((bucket_end - bucket_start).total_seconds()))))
+        return sorted(starts)
+
     def _window_attempts(self, rng: random.Random, spec: MerchantSpec, payment: PaymentRow, shape: str, created: datetime, codes: list[str]) -> None:
         """The attempt chain for one scripted payment; each retry is a new attempt record."""
         attempts: list[AttemptRow] = []
@@ -576,9 +596,8 @@ class Seeder:
                           ("failed_twice", seg.failed_twice), ("pending", seg.pending))
                 shapes = [shape for shape, count in counts for _ in range(count)]
                 rng.shuffle(shapes)
-                span = int((seg.end - seg.start).total_seconds())
-                starts = sorted(rng.randrange(span) for _ in shapes)
-                plan.extend((shape, _midnight_safe(seg.start + timedelta(seconds=s))) for shape, s in zip(shapes, starts))
+                starts = self._segment_starts(rng, spec, window.channel, seg, len(shapes))
+                plan.extend((shape, _midnight_safe(start)) for shape, start in zip(shapes, starts))
             declines = sum(self._SHAPE_DECLINES[shape] for shape, _ in plan)
             if len(window.failure_codes) != declines:
                 raise ValueError(f"{window.merchant_slug}/{window.channel}: {len(window.failure_codes)} failure codes for {declines} declined attempts")
@@ -683,6 +702,18 @@ class Seeder:
                 return a
         return None
 
+    def _business_hours_instant(self, day: date) -> datetime:
+        minute = self.rng.randint(S.REFUND_HOURS[0] * 60, S.REFUND_HOURS[1] * 60 - 1)
+        return chicago_local(day.year, day.month, day.day, minute // 60, minute % 60, self.rng.randint(0, 59))
+
+    def _pending_refund_instant(self, completed: datetime) -> datetime:
+        """A business-hours instant in the last twenty hours before the clock, after the sale it refunds."""
+        for _ in range(100):
+            at = S.AS_OF - timedelta(minutes=self.rng.randint(35, 20 * 60))
+            if S.REFUND_HOURS[0] <= at.astimezone(CHICAGO).hour < S.REFUND_HOURS[1] and at > completed:
+                return at
+        return completed + timedelta(hours=3)
+
     def build_refunds(self) -> None:
         refunded_ids: set[str] = set()
         by_merchant: dict[str, list[PaymentRow]] = {}
@@ -724,20 +755,16 @@ class Seeder:
                     amount, reason = 4800, "price_adjustment"
                 else:
                     if p.id in pending_ids:
-                        created = _midnight_safe(S.AS_OF - timedelta(minutes=self.rng.randint(35, 20 * 60)))
-                        if created <= completed:
-                            created = completed + timedelta(hours=3)
+                        created = self._pending_refund_instant(completed)
                     else:
-                        local_day = (completed.astimezone(CHICAGO) + timedelta(days=self.rng.randint(*S.REFUND_DELAY_DAYS))).date()
-                        minute = self.rng.randint(S.REFUND_HOURS[0] * 60, S.REFUND_HOURS[1] * 60 - 1)
-                        created = chicago_local(local_day.year, local_day.month, local_day.day, minute // 60, minute % 60, self.rng.randint(0, 59))
-                    if created >= S.AS_OF - timedelta(minutes=30):
-                        # Would fall after the clock: issued on one of the last few days instead, in business hours.
-                        local_day = S.AS_OF_DAY - timedelta(days=self.rng.randint(1, 3))
-                        minute = self.rng.randint(S.REFUND_HOURS[0] * 60, S.REFUND_HOURS[1] * 60 - 1)
-                        created = chicago_local(local_day.year, local_day.month, local_day.day, minute // 60, minute % 60, self.rng.randint(0, 59))
-                        if created <= completed:
+                        # Issued one to twelve days after the sale, in business hours, and before the clock's day;
+                        # a sale too recent for that has simply not been refunded yet.
+                        completed_day = completed.astimezone(CHICAGO).date()
+                        latest_delay = (S.AS_OF_DAY - completed_day).days - 1
+                        if latest_delay < S.REFUND_DELAY_DAYS[0]:
                             continue
+                        delay = self.rng.randint(S.REFUND_DELAY_DAYS[0], min(S.REFUND_DELAY_DAYS[1], latest_delay))
+                        created = self._business_hours_instant(completed_day + timedelta(days=delay))
                     items = self.payment_items[p.id]
                     full = self.rng.random() < S.REFUND_FULL_SHARE or len(items) == 1 and self.rng.random() < 0.5
                     if full:

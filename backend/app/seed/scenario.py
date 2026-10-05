@@ -395,7 +395,10 @@ WINDOW_OVERRIDES: tuple[WindowOverride, ...] = (
 
 @dataclass(frozen=True)
 class ScriptedSegment:
-    """How many payments start between two instants, by the shape of their attempt chain."""
+    """How many payments start between two instants, by the shape of their attempt chain.
+
+    Start instants follow the merchant's hourly volume profile for the channel.
+    """
 
     start: datetime
     end: datetime
@@ -444,7 +447,7 @@ SCRIPTED_WINDOWS: tuple[ScriptedWindow, ...] = (
         start=chicago_local(2026, 10, 1, 15, 0),
         end=chicago_local(2026, 10, 2, 11, 0),
         segments=(
-            ScriptedSegment(chicago_local(2026, 10, 1, 15, 0), chicago_local(2026, 10, 1, 22, 30),
+            ScriptedSegment(chicago_local(2026, 10, 1, 15, 0), chicago_local(2026, 10, 1, 23, 30),
                             succeeded=1, failed_then_succeeded=15, failed_twice_then_succeeded=2, failed=5, failed_twice=2),
             ScriptedSegment(chicago_local(2026, 10, 2, 0, 5), chicago_local(2026, 10, 2, 10, 0),
                             succeeded=1, failed_then_succeeded=6, failed=2),
@@ -485,7 +488,7 @@ REFUND_REASON_WEIGHTS: dict[str, float] = {
 }
 REFUND_FULL_SHARE = 0.70
 REFUND_DELAY_DAYS = (1, 12)
-# Refunds are issued by staff during business hours, Chicago time: from the start hour up to the end hour.
+# Refunds are issued by staff during business hours, Chicago time: from the start hour up to (not including) the end hour.
 REFUND_HOURS = (8, 20)
 PENDING_REFUNDS_PER_MERCHANT: dict[str, int] = {"alder-loom": 2, "juniper-trail": 1, "copper-finch": 0}
 
