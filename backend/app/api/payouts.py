@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 import sqlite3
 from datetime import date
 from typing import Literal
@@ -14,11 +13,10 @@ from app.api.listing import page_params
 from app.api.schemas.payouts import FundsSummary, MovementItem, NextPayout, PayoutBuckets, PayoutDetail, PayoutListItem, PayoutListResponse
 from app.auth.permissions import require
 from app.auth.session import Principal
-from app.core import clock, ids, schedule
+from app.core import clock, schedule
 from app.core.labels import MOVEMENT_TYPE_LABELS, PAYOUT_STATUS_LABELS
 from app.core.tz import chicago_date_string, chicago_range, to_iso
 from app.db.connection import get_conn
-from app.db.queries import notes as notes_q
 from app.db.queries import payouts as payouts_q
 from app.db.queries.common import Page
 from app.exports import csv as csv_export
@@ -169,15 +167,7 @@ def export_payout_csv(
     row, movements, _ = _load_reconciled(principal, conn, payout_id)
     payout_day = chicago_date_string(row["cutoff_at"])
     filename = csv_export.export_filename(principal.merchant_slug, "payout", payout_day, payout_id)
-    notes_q.insert_export(
-        principal.merchant_id,
-        conn,
-        event_id=ids.new_id("note_event", secrets.SystemRandom()),
-        actor_user_id=principal.user_id,
-        export_name=filename,
-        body=f"Downloaded the movement CSV for payout {payout_id} ({payout_day}).",
-        created_at=to_iso(clock.wall_now()),
-    )
+    csv_export.record_export(principal, conn, filename, f"Downloaded the movement CSV for payout {payout_id} ({payout_day}).", payout_id=payout_id)
     rows = (
         [
             m["id"], m["type"], MOVEMENT_TYPE_LABELS[m["type"]], m["amount_cents"], csv_export.usd(m["amount_cents"]), m["currency"], m["description"],

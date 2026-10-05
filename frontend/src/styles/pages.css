@@ -489,3 +489,38 @@
 .attention-empty {
   margin: 0;
 }
+
+/* Reports */
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--space-5);
+}
+.report-card .filterbar {
+  margin-bottom: var(--space-3);
+}
+.report-description {
+  margin: 0 0 var(--space-4);
+}
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Disputes */
+.deadline strong {
+  font-weight: 600;
+}
+.deadline-warning strong {
+  color: var(--color-warning);
+}
+.deadline-danger strong {
+  color: var(--color-danger);
+}
+
+/* Activity */
+.activity-body {
+  display: inline-block;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}

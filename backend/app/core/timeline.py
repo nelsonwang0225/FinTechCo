@@ -88,6 +88,44 @@ def build_timeline(
     return events
 
 
+def build_dispute_history(
+    *,
+    now_iso: str,
+    dispute: sqlite3.Row,
+    movements: list[sqlite3.Row],
+    notes: list[sqlite3.Row],
+) -> list[TimelineEvent]:
+    """A dispute's case history from its lifecycle timestamps, its ledger movements and its notes. Nothing stored."""
+    events: list[TimelineEvent] = []
+
+    def add(kind: str, at: str, title: str, detail: str | None = None, amount_cents: int | None = None, ref_id: str | None = None) -> None:
+        events.append(TimelineEvent(kind, at, title, detail, at > now_iso, amount_cents, ref_id))
+
+    add("order_received", dispute["payment_created_at"], "Payment received", f"{dispute['order_reference']} · {_usd(dispute['payment_amount_cents'])}", dispute["payment_amount_cents"], dispute["payment_id"])
+    reason = DISPUTE_REASON_LABELS.get(dispute["reason"], dispute["reason"])
+    add("dispute_opened", dispute["opened_at"], "Dispute opened", f"Reason given: {reason}", None, dispute["id"])
+    for m in movements:
+        if m["type"] == "dispute_reversal":
+            add("funds_withheld", m["posted_at"], "Disputed amount withheld", "Reversed from the balance while the case is open", m["amount_cents"], m["id"])
+        elif m["type"] == "dispute_fee":
+            add("dispute_fee", m["posted_at"], "Dispute fee charged", "Charged by the card network for the case", m["amount_cents"], m["id"])
+        elif m["type"] == "dispute_reinstatement":
+            add("funds_reinstated", m["posted_at"], "Disputed amount reinstated", "Returned to the balance", m["amount_cents"], m["id"])
+    if dispute["responded_at"]:
+        add("dispute_responded", dispute["responded_at"], "Evidence submitted", "Under review by the card network", None, dispute["id"])
+    if dispute["resolved_at"]:
+        outcome = DISPUTE_STATUS_LABELS[dispute["status"]]
+        detail = "Funds reinstated" if dispute["status"] == "won" else "Funds not returned"
+        add("dispute_resolved", dispute["resolved_at"], f"Dispute {outcome.lower()}", detail, None, dispute["id"])
+    elif dispute["status"] == "needs_response":
+        add("dispute_evidence_due", dispute["evidence_due_at"], "Evidence due", "Respond before this deadline", None, dispute["id"])
+    for n in notes:
+        add("note", n["created_at"], f"Note by {n['actor_name']}", n["body"], None, n["id"])
+
+    events.sort(key=lambda e: (e.at, _ORDER.get(e.kind, 50)))
+    return events
+
+
 _ORDER: dict[str, int] = {
     "order_received": 0,
     "attempt_failed": 10,
@@ -100,8 +138,11 @@ _ORDER: dict[str, int] = {
     "refund_pending": 40,
     "refund_succeeded": 41,
     "dispute_opened": 42,
-    "dispute_responded": 43,
-    "dispute_resolved": 44,
-    "dispute_evidence_due": 45,
+    "funds_withheld": 43,
+    "dispute_fee": 44,
+    "dispute_responded": 45,
+    "dispute_resolved": 46,
+    "funds_reinstated": 47,
+    "dispute_evidence_due": 48,
     "note": 60,
 }

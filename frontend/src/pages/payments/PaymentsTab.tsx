@@ -14,12 +14,14 @@ import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { formatCents, parseDollarsToCents } from "../../lib/format";
 import type { QueryState } from "../../lib/query";
+import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
 
 const PAGE_SIZE = 25;
 
 export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) {
   const navigate = useNavigate();
+  const { can } = useSession();
   const sort = query.get("sort", "created_at");
   const dir: "asc" | "desc" = query.get("dir", "desc") === "asc" ? "asc" : "desc";
   const page = query.getInt("page", 1);
@@ -37,6 +39,8 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     page_size: PAGE_SIZE,
   };
   const list = useApi<PaymentListResponse>(`/api/payments${queryString(params)}`);
+  const { page: _page, page_size: _pageSize, ...exportParams } = params;
+  const exportHref = `/api/reports/payments.csv${queryString(exportParams)}`;
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
@@ -80,7 +84,15 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
-      <FilterBar>
+      <FilterBar
+        trailing={
+          can("reports:operational") ? (
+            <a className="btn" href={exportHref} download data-export="payments">
+              Export CSV
+            </a>
+          ) : null
+        }
+      >
         <FilterSearch id="payments-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or payment id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} />
         <FilterSelect id="payments-status" label="Status" value={query.get("status")} options={meta.payment_statuses} onChange={(v) => query.set({ status: v })} />

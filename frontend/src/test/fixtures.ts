@@ -24,8 +24,16 @@ export const META: Meta = {
     { value: "succeeded", label: "Succeeded" },
   ],
   refund_reasons: [{ value: "price_adjustment", label: "Price adjustment" }],
-  dispute_statuses: [{ value: "needs_response", label: "Needs response" }],
-  dispute_reasons: [{ value: "fraudulent", label: "Fraudulent" }],
+  dispute_statuses: [
+    { value: "needs_response", label: "Needs response" },
+    { value: "under_review", label: "Under review" },
+    { value: "won", label: "Won" },
+    { value: "lost", label: "Lost" },
+  ],
+  dispute_reasons: [
+    { value: "fraudulent", label: "Fraudulent" },
+    { value: "product_not_received", label: "Product not received" },
+  ],
   payout_statuses: [
     { value: "in_transit", label: "In transit" },
     { value: "paid", label: "Paid" },

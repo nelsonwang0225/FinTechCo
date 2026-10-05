@@ -13,12 +13,14 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import type { QueryState } from "../../lib/query";
+import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
 
 const PAGE_SIZE = 25;
 
 export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) {
   const navigate = useNavigate();
+  const { can } = useSession();
   const sort = query.get("sort", "created_at");
   const dir: "asc" | "desc" = query.get("dir", "desc") === "asc" ? "asc" : "desc";
   const page = query.getInt("page", 1);
@@ -34,6 +36,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     page_size: PAGE_SIZE,
   };
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
+  const { page: _page, page_size: _pageSize, ...exportParams } = params;
+  const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
@@ -76,7 +80,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
-      <FilterBar>
+      <FilterBar
+        trailing={
+          can("reports:operational") ? (
+            <a className="btn" href={exportHref} download data-export="attempts">
+              Export CSV
+            </a>
+          ) : null
+        }
+      >
         <FilterSearch id="attempts-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />

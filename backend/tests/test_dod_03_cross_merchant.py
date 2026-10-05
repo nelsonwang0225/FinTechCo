@@ -18,6 +18,12 @@ CASES: list[tuple[str, str, str, str]] = [
     ("sam_copper", "/api/payouts/{id}", "alder-loom", "payout_id"),
     ("daniel", "/api/payouts/{id}", "juniper-trail", "payout_id"),
     ("daniel", "/api/payouts/{id}/export.csv", "juniper-trail", "payout_id"),
+    ("maya", "/api/customers/{id}", "juniper-trail", "customer_id"),
+    ("priya", "/api/customers/{id}", "alder-loom", "customer_id"),
+    ("sam_copper", "/api/customers/{id}", "alder-loom", "customer_id"),
+    ("maya", "/api/disputes/{id}", "juniper-trail", "dispute_id"),
+    ("priya", "/api/disputes/{id}", "alder-loom", "dispute_id"),
+    ("sam_copper", "/api/disputes/{id}", "alder-loom", "dispute_id"),
 ]
 
 
@@ -38,6 +44,12 @@ def test_foreign_payment_note_is_404_not_written(client_as, ids: Ids, seeded_con
     assert client_as("priya").get(f"/api/payments/{foreign_id}").json()["notes"] == [] or all(
         n["body"] != "should not land" for n in client_as("priya").get(f"/api/payments/{foreign_id}").json()["notes"]
     )
+
+
+def test_foreign_dispute_note_is_404_not_written(client_as, ids: Ids) -> None:
+    foreign_id = ids.sample("juniper-trail", "dispute_id")
+    assert client_as("maya").post(f"/api/disputes/{foreign_id}/notes", json={"body": "should not land"}).status_code == 404
+    assert all(n["body"] != "should not land" for n in client_as("priya").get(f"/api/disputes/{foreign_id}").json()["notes"])
 
 
 def test_the_same_id_is_found_by_its_own_merchant(client_as, ids: Ids) -> None:

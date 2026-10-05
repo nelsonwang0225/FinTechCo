@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ATTEMPTS, META, PAYMENTS } from "../../test/fixtures";
-import { MAYA, mockFetch, type Handler } from "../../test/mockApi";
+import { MAYA, SAM, mockFetch, type Handler } from "../../test/mockApi";
 import { click, flush, renderPage, setValue, type Rendered } from "../../test/render";
 import { PaymentsPage } from "./PaymentsPage";
 
@@ -78,5 +78,17 @@ describe("PaymentsPage", () => {
     page = await renderPage(<PaymentsPage />, "/payments?q=nothing");
     await flush();
     expect(page.container.textContent).toContain("No payments match");
+  });
+
+  it("offers a CSV export of the current filters to roles with reports:operational only", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?status=failed&channel=website");
+    await flush();
+    expect(page.container.querySelector("a[data-export=payments]")?.getAttribute("href")).toBe("/api/reports/payments.csv?period=last_7_days&status=failed&channel=website&sort=created_at&dir=desc");
+    page.unmount();
+    mockFetch((url) => (url === "/api/session" ? { status: 200, body: SAM } : handler(url, undefined)));
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
+    await flush();
+    expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
 });

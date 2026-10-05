@@ -3,13 +3,18 @@ import type { Session } from "./api/types";
 import { PersonaBar } from "./dev/PersonaBar";
 import { PersonaChooser } from "./dev/PersonaChooser";
 import { AppShell } from "./layout/AppShell";
+import { CustomerDetailPage } from "./pages/customer-detail/CustomerDetailPage";
+import { CustomersPage } from "./pages/customers/CustomersPage";
+import { DisputeDetailPage } from "./pages/dispute-detail/DisputeDetailPage";
+import { DisputesPage } from "./pages/disputes/DisputesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OverviewPage } from "./pages/overview/OverviewPage";
-import { PagePlaceholder } from "./pages/PagePlaceholder";
 import { PaymentDetailPage } from "./pages/payment-detail/PaymentDetailPage";
 import { PaymentsPage } from "./pages/payments/PaymentsPage";
 import { PayoutDetailPage } from "./pages/payout-detail/PayoutDetailPage";
 import { PayoutsPage } from "./pages/payouts/PayoutsPage";
+import { ReportsPage } from "./pages/reports/ReportsPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
 import { RequirePermission } from "./session/RequirePermission";
 import { SessionProvider, useSession } from "./session/SessionProvider";
 
@@ -88,27 +93,43 @@ function ProductApp(_: { session: Session }) {
           }
         />
         <Route
-          path="/customers/*"
+          path="/customers"
           element={
             <RequirePermission permission="customers:read">
-              <PagePlaceholder title="Customers" />
+              <CustomersPage />
             </RequirePermission>
           }
         />
         <Route
-          path="/disputes/*"
+          path="/customers/:customerId"
+          element={
+            <RequirePermission permission="customers:read">
+              <CustomerDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/disputes"
           element={
             <RequirePermission permission="disputes:read">
-              <PagePlaceholder title="Disputes" />
+              <DisputesPage />
             </RequirePermission>
           }
         />
-        <Route path="/reports" element={<PagePlaceholder title="Reports" />} />
         <Route
-          path="/settings/*"
+          path="/disputes/:disputeId"
+          element={
+            <RequirePermission permission="disputes:read">
+              <DisputeDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route
+          path="/settings"
           element={
             <RequirePermission permission="settings:read">
-              <PagePlaceholder title="Settings" />
+              <SettingsPage />
             </RequirePermission>
           }
         />

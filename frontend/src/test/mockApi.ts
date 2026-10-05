@@ -48,6 +48,17 @@ export const JORDAN: Session = {
   timezone: "America/Chicago",
 };
 
+export const SAM: Session = {
+  membership_id: "mem_sam00000000001",
+  user: { id: "usr_sam00000000001", full_name: "Sam Okafor", email: "sam.okafor@example.com", title: "Analyst" },
+  merchant: ALDER,
+  role: "read_only_analyst",
+  role_label: "Read-only analyst",
+  permissions: ["overview:read", "payments:read", "customers:read", "disputes:read", "payouts:read"],
+  as_of: "2026-10-05T14:12:00Z",
+  timezone: "America/Chicago",
+};
+
 export const PERSONAS: PersonasResponse = {
   merchants: [
     {
