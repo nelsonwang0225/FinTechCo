@@ -12,6 +12,7 @@ import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
+import { IconDownload } from "../../layout/icons";
 import type { QueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
@@ -63,13 +64,13 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         </Link>
       ),
     },
-    { key: "order", header: "Order", sortKey: "order_reference", render: (a) => <span className="mono">{a.order_reference}</span> },
+    { key: "order", header: "Order", sortKey: "order_reference", className: "secondary", render: (a) => <span className="mono">{a.order_reference}</span> },
     { key: "attempt", header: "Attempt", render: (a) => <span className="num">#{a.attempt_number}</span> },
     { key: "outcome", header: "Outcome", sortKey: "outcome", render: (a) => <StatusBadge status={a.outcome} label={a.outcome_label} /> },
     { key: "reason", header: "Recorded reason", render: (a) => a.failure_message ?? <span className="muted">—</span> },
     { key: "method", header: "Method", render: (a) => a.method.label },
     { key: "channel", header: "Channel", render: (a) => (a.location ? `${a.channel_label} · ${a.location.name}` : a.channel_label) },
-    { key: "customer", header: "Customer", render: (a) => (a.customer ? a.customer.full_name : <span className="muted">Guest</span>) },
+    { key: "customer", header: "Customer", className: "primary", render: (a) => (a.customer ? a.customer.full_name : <span className="muted">Guest</span>) },
     { key: "amount", header: "Amount", align: "right", sortKey: "amount", render: (a) => <Money cents={a.amount_cents} /> },
   ];
 
@@ -80,15 +81,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
-      <FilterBar
-        trailing={
-          can("reports:operational") ? (
-            <a className="btn" href={exportHref} download data-export="attempts">
-              Export CSV
-            </a>
-          ) : null
-        }
-      >
+      <FilterBar>
         <FilterSearch id="attempts-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
@@ -110,11 +103,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         ) : null}
       </FilterBar>
       <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
-      {list.data ? (
-        <p className="list-period muted">
-          Showing {list.data.period.label.toLowerCase()}: {list.data.period.range_label}
-        </p>
-      ) : null}
+      <div className="toolbar-note">
+        <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
+        {can("reports:operational") ? (
+          <a className="btn btn-sm" href={exportHref} download data-export="attempts">
+            <IconDownload />
+            Export CSV
+          </a>
+        ) : null}
+      </div>
       {list.error ? <LoadError error={list.error} onRetry={list.reload} /> : null}
       {!list.error && !list.data && list.loading ? <LoadingState rows={8} /> : null}
       {list.data && list.data.items.length === 0 ? <EmptyState title="No attempts match" body="Try a wider period or clear a filter." /> : null}

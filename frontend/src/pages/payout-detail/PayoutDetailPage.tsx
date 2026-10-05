@@ -8,6 +8,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft, IconDownload } from "../../layout/icons";
 import { formatCount, formatDate, formatWeekdayDate } from "../../lib/format";
 import { useSession } from "../../session/SessionProvider";
 
@@ -63,6 +64,12 @@ export function PayoutDetailPage() {
   return (
     <>
       <PageHeader
+        above={
+          <Link to="/payouts">
+            <IconChevronLeft />
+            Payouts
+          </Link>
+        }
         title={
           <span className="detail-title">
             Payout · {formatWeekdayDate(p.payout_date)}
@@ -71,7 +78,7 @@ export function PayoutDetailPage() {
         }
         subtitle={
           <>
-            <Link to="/payouts">Payouts</Link> · <span className="mono">{p.id}</span>
+            Payout <span className="mono">{p.id}</span> · {formatCount(p.movement_count)} movements
           </>
         }
         actions={
@@ -79,6 +86,7 @@ export function PayoutDetailPage() {
             <Money cents={p.amount_cents} className="detail-amount-value" />
             {can("reports:financial") ? (
               <a className="btn" href={`/api/payouts/${encodeURIComponent(p.id)}/export.csv`} download>
+                <IconDownload />
                 Download CSV
               </a>
             ) : null}
@@ -86,9 +94,11 @@ export function PayoutDetailPage() {
         }
       />
 
-      <section className="card detail-summary" aria-label="Payout summary">
+      <div className="detail-grid-aside">
+      <section className="card" aria-label="Payout summary">
+        <h2 className="section-title">Payout details</h2>
         <DescriptionList
-          columns={3}
+          columns={2}
           items={[
             { term: "Cutoff", value: <Timestamp iso={p.cutoff_at} mode="full" /> },
             { term: "Sent", value: <Timestamp iso={p.sent_at} mode="full" /> },
@@ -113,7 +123,7 @@ export function PayoutDetailPage() {
         />
       </section>
 
-      <section className="card detail-summary" aria-labelledby="recon-heading">
+      <section className="card" aria-labelledby="recon-heading">
         <h2 id="recon-heading" className="section-title">
           What this payout is made of
         </h2>
@@ -137,6 +147,7 @@ export function PayoutDetailPage() {
           </tbody>
         </table>
       </section>
+      </div>
 
       <section aria-labelledby="movements-heading">
         <h2 id="movements-heading" className="section-title">

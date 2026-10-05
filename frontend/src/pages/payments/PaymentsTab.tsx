@@ -12,6 +12,7 @@ import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
+import { IconDownload } from "../../layout/icons";
 import { formatCents, parseDollarsToCents } from "../../lib/format";
 import type { QueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
@@ -68,8 +69,8 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         </Link>
       ),
     },
-    { key: "order", header: "Order", sortKey: "order_reference", render: (p) => <span className="mono">{p.order_reference}</span> },
-    { key: "customer", header: "Customer", sortKey: "customer", render: (p) => (p.customer ? p.customer.full_name : <span className="muted">Guest</span>) },
+    { key: "order", header: "Order", sortKey: "order_reference", className: "secondary", render: (p) => <span className="mono">{p.order_reference}</span> },
+    { key: "customer", header: "Customer", sortKey: "customer", className: "primary", render: (p) => (p.customer ? p.customer.full_name : <span className="muted">Guest</span>) },
     { key: "status", header: "Status", sortKey: "status", render: (p) => <StatusBadge status={p.status} label={p.status_label} /> },
     { key: "channel", header: "Channel", render: (p) => (p.location ? `${p.channel_label} · ${p.location.name}` : p.channel_label) },
     { key: "method", header: "Method", render: (p) => p.method?.label ?? <span className="muted">—</span> },
@@ -84,15 +85,7 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
-      <FilterBar
-        trailing={
-          can("reports:operational") ? (
-            <a className="btn" href={exportHref} download data-export="payments">
-              Export CSV
-            </a>
-          ) : null
-        }
-      >
+      <FilterBar>
         <FilterSearch id="payments-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or payment id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} />
         <FilterSelect id="payments-status" label="Status" value={query.get("status")} options={meta.payment_statuses} onChange={(v) => query.set({ status: v })} />
@@ -116,11 +109,15 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <AmountInput id="payments-max" label="Max amount" cents={query.get("amount_max_cents")} onChange={(c) => query.set({ amount_max_cents: c })} />
       </FilterBar>
       <ActiveFilters chips={chips} onClear={() => query.set({ q: null, status: null, channel: null, location_id: null, amount_min_cents: null, amount_max_cents: null })} />
-      {list.data ? (
-        <p className="list-period muted">
-          Showing {list.data.period.label.toLowerCase()}: {list.data.period.range_label}
-        </p>
-      ) : null}
+      <div className="toolbar-note">
+        <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
+        {can("reports:operational") ? (
+          <a className="btn btn-sm" href={exportHref} download data-export="payments">
+            <IconDownload />
+            Export CSV
+          </a>
+        ) : null}
+      </div>
       {list.error ? <LoadError error={list.error} onRetry={list.reload} /> : null}
       {!list.error && !list.data && list.loading ? <LoadingState rows={8} /> : null}
       {list.data && list.data.items.length === 0 ? <EmptyState title="No payments match" body="Try a wider period or clear a filter." /> : null}

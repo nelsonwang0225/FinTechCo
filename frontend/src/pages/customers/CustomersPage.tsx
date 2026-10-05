@@ -25,6 +25,7 @@ export function CustomersPage() {
       key: "name",
       header: "Name",
       sortKey: "name",
+      className: "primary",
       render: (c) => (
         <Link to={`/customers/${c.id}`} className="row-link" onClick={(e) => e.stopPropagation()}>
           {c.full_name}
@@ -32,7 +33,7 @@ export function CustomersPage() {
       ),
     },
     { key: "email", header: "Email", sortKey: "email", render: (c) => c.email },
-    { key: "reference", header: "Reference", sortKey: "reference", render: (c) => <span className="mono">{c.reference}</span> },
+    { key: "reference", header: "Reference", sortKey: "reference", className: "secondary", render: (c) => <span className="mono">{c.reference}</span> },
     { key: "first", header: "First payment", sortKey: "first_payment_at", render: (c) => <Timestamp iso={c.first_payment_at} /> },
     { key: "recent", header: "Recent activity", sortKey: "last_activity_at", render: (c) => <Timestamp iso={c.last_activity_at} /> },
   ];
@@ -44,7 +45,7 @@ export function CustomersPage() {
 
   return (
     <>
-      <PageHeader title="Customers" subtitle="Shoppers who have paid this business. Guest checkouts are not customers." />
+      <PageHeader title="Customers" subtitle="Shoppers who have paid this business. Guest checkouts are not included." />
       <FilterBar>
         <FilterSearch id="customers-search" label="Search" value={query.get("q")} placeholder="Name, email or reference" onChange={(v) => query.set({ q: v })} />
       </FilterBar>

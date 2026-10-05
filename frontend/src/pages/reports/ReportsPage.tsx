@@ -5,6 +5,7 @@ import { useApi } from "../../api/useApi";
 import { FilterBar, FilterDate, FilterSelect } from "../../components/FilterBar";
 import { ErrorState, ForbiddenState, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconDownload } from "../../layout/icons";
 import { useQueryState, type QueryState } from "../../lib/query";
 import { scopedQuery } from "../../lib/scopedQuery";
 import { useSession } from "../../session/SessionProvider";
@@ -31,7 +32,7 @@ export function ReportsPage() {
   }
   return (
     <>
-      <PageHeader title="Reports" subtitle={`CSV exports for ${session?.merchant.name ?? "this business"}. Each export honours its filters and is recorded under Settings → Activity.`} />
+      <PageHeader title="Reports" subtitle={`Export payment, payout, refund and operational records for ${session?.merchant.name ?? "this business"} as CSV. Each download honours its filters and is recorded under Settings → Activity.`} />
       {meta.loading && !meta.data ? <LoadingState rows={4} /> : null}
       {meta.error ? <ErrorState error={meta.error} onRetry={meta.reload} /> : null}
       {meta.data ? (
@@ -55,7 +56,8 @@ function ReportCard({ id, title, description, permission, href, children }: { id
       <p className="muted report-description">{description}</p>
       <FilterBar>{children}</FilterBar>
       <div className="report-actions">
-        <a className="btn btn-primary" href={href} download data-report={id}>
+        <a className="btn" href={href} download data-report={id}>
+          <IconDownload />
           Download CSV
         </a>
       </div>

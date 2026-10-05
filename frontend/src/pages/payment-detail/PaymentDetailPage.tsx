@@ -10,6 +10,7 @@ import { Timeline } from "../../components/Timeline";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft } from "../../layout/icons";
 import { useSession } from "../../session/SessionProvider";
 
 export function PaymentDetailPage() {
@@ -89,6 +90,12 @@ export function PaymentDetailPage() {
   return (
     <>
       <PageHeader
+        above={
+          <Link to="/payments">
+            <IconChevronLeft />
+            Payments
+          </Link>
+        }
         title={
           <span className="detail-title">
             <span className="mono">{p.order_reference}</span>
@@ -97,7 +104,7 @@ export function PaymentDetailPage() {
         }
         subtitle={
           <>
-            <Link to="/payments">Payments</Link> · Payment <span className="mono">{p.id}</span>
+            Payment <span className="mono">{p.id}</span> · {p.location ? `${p.channel_label} · ${p.location.name}` : p.channel_label}
           </>
         }
         actions={

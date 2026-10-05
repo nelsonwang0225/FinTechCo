@@ -41,9 +41,9 @@ function ProfileTab() {
   if (!profile.data) return <LoadingState rows={6} />;
   const p = profile.data;
   const locationColumns: Column<LocationOption>[] = [
-    { key: "name", header: "Location", render: (l) => l.name },
+    { key: "name", header: "Location", className: "primary", render: (l) => l.name },
     { key: "address", header: "Address", render: (l) => `${l.address_line}, ${l.city}, ${l.state}` },
-    { key: "id", header: "Id", render: (l) => <span className="mono">{l.id}</span> },
+    { key: "id", header: "Id", className: "secondary", render: (l) => <span className="mono">{l.id}</span> },
   ];
   return (
     <>
@@ -82,9 +82,9 @@ function TeamTab() {
   if (team.error) return <LoadError error={team.error} onRetry={team.reload} />;
   if (!team.data) return <LoadingState rows={4} />;
   const columns: Column<TeamMember>[] = [
-    { key: "name", header: "Name", render: (m) => m.user.full_name },
+    { key: "name", header: "Name", className: "primary", render: (m) => m.user.full_name },
     { key: "title", header: "Title", render: (m) => m.title },
-    { key: "email", header: "Email", render: (m) => m.email },
+    { key: "email", header: "Email", className: "secondary", render: (m) => m.email },
     { key: "role", header: "Role", render: (m) => m.role_label },
     {
       key: "status",
@@ -116,7 +116,7 @@ function ActivityTab({ query }: { query: QueryState }) {
   const activity = useApi<ActivityResponse>(`/api/settings/activity${queryString(params)}`);
   const columns: Column<ActivityItem>[] = [
     { key: "when", header: "When", render: (a) => <Timestamp iso={a.created_at} /> },
-    { key: "who", header: "Who", render: (a) => a.actor.full_name },
+    { key: "who", header: "Who", className: "primary", render: (a) => a.actor.full_name },
     { key: "what", header: "What", render: (a) => a.kind_label },
     { key: "subject", header: "Subject", render: (a) => <SubjectLink item={a} /> },
     { key: "details", header: "Details", render: (a) => <span className="activity-body">{a.body}</span> },

@@ -167,8 +167,8 @@ function RecentPayments({ items }: { items: PaymentListItem[] }) {
         </Link>
       ),
     },
-    { key: "order", header: "Order", render: (p) => <span className="mono">{p.order_reference}</span> },
-    { key: "customer", header: "Customer", render: (p) => (p.customer ? p.customer.full_name : <span className="muted">Guest</span>) },
+    { key: "order", header: "Order", className: "secondary", render: (p) => <span className="mono">{p.order_reference}</span> },
+    { key: "customer", header: "Customer", className: "primary", render: (p) => (p.customer ? p.customer.full_name : <span className="muted">Guest</span>) },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} label={p.status_label} /> },
     { key: "amount", header: "Amount", align: "right", render: (p) => <Money cents={p.amount_cents} /> },
   ];

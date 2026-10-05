@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../api/client";
 import type { PersonasResponse } from "../api/types";
 import { useApi } from "../api/useApi";
+import { initials } from "../lib/format";
 import { useSession } from "../session/SessionProvider";
 
 /** Full-screen development-only persona picker. Deliberately styled as a tool, not as product UI. */
@@ -25,11 +26,11 @@ export function PersonaChooser() {
   return (
     <div className="dev-chooser">
       <div className="dev-chooser-panel">
-        <p className="dev-kicker">Development · persona selector</p>
+        <p className="dev-kicker">Development · Persona selector</p>
         <h1 className="dev-title">Choose who you are</h1>
         <p className="dev-lede">
-          Pick a seeded team member to open FinTechCo Business as them. The server checks that the person belongs to the business; the
-          session carries only that membership.
+          Pick a seeded team member to open FinTechCo Business as them. The server checks that the person belongs to the business and
+          the session carries only that membership.
         </p>
         {personas.loading ? <p className="dev-muted">Loading personas…</p> : null}
         {personas.error ? <p className="dev-error" role="alert">{personas.error.message}</p> : null}
@@ -53,9 +54,12 @@ export function PersonaChooser() {
                     aria-busy={busy === p.membership_id || undefined}
                     onClick={() => void choose(p.user_id, group.merchant.id, p.membership_id)}
                   >
+                    <span className="dev-persona-avatar" aria-hidden="true">
+                      {initials(p.full_name)}
+                    </span>
                     <span className="dev-persona-name">{p.full_name}</span>
-                    <span className="dev-persona-role">{p.role_label}</span>
                     <span className="dev-persona-title">{p.title}</span>
+                    <span className="dev-persona-role">{p.role_label}</span>
                   </button>
                 </li>
               ))}

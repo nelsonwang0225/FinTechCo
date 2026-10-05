@@ -19,7 +19,7 @@ export function PaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Payments" subtitle="Every order and every attempt to pay for it, in America/Chicago time." />
+      <PageHeader title="Payments" subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago." />
       <Tabs
         tabs={TABS}
         active={tab}
