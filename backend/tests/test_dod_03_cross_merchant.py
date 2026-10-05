@@ -15,6 +15,9 @@ CASES: list[tuple[str, str, str, str]] = [
     ("maya", "/api/payments/{id}", "juniper-trail", "payment_id"),
     ("priya", "/api/payments/{id}", "alder-loom", "payment_id"),
     ("sam_copper", "/api/payments/{id}", "alder-loom", "payment_id"),
+    ("sam_copper", "/api/payouts/{id}", "alder-loom", "payout_id"),
+    ("daniel", "/api/payouts/{id}", "juniper-trail", "payout_id"),
+    ("daniel", "/api/payouts/{id}/export.csv", "juniper-trail", "payout_id"),
 ]
 
 

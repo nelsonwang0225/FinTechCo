@@ -7,6 +7,8 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { PagePlaceholder } from "./pages/PagePlaceholder";
 import { PaymentDetailPage } from "./pages/payment-detail/PaymentDetailPage";
 import { PaymentsPage } from "./pages/payments/PaymentsPage";
+import { PayoutDetailPage } from "./pages/payout-detail/PayoutDetailPage";
+import { PayoutsPage } from "./pages/payouts/PayoutsPage";
 import { RequirePermission } from "./session/RequirePermission";
 import { SessionProvider, useSession } from "./session/SessionProvider";
 
@@ -69,10 +71,18 @@ function ProductApp(_: { session: Session }) {
           }
         />
         <Route
-          path="/payouts/*"
+          path="/payouts"
           element={
             <RequirePermission permission="payouts:read">
-              <PagePlaceholder title="Payouts" />
+              <PayoutsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/payouts/:payoutId"
+          element={
+            <RequirePermission permission="payouts:read">
+              <PayoutDetailPage />
             </RequirePermission>
           }
         />

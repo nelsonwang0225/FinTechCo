@@ -26,6 +26,28 @@ export const PRIYA: Session = {
   timezone: "America/Chicago",
 };
 
+export const DANIEL: Session = {
+  membership_id: "mem_daniel00000001",
+  user: { id: "usr_daniel00000001", full_name: "Daniel Brooks", email: "daniel.brooks@alder-loom.example.com", title: "Finance Manager" },
+  merchant: ALDER,
+  role: "finance_manager",
+  role_label: "Finance manager",
+  permissions: ["overview:read", "payments:read", "disputes:read", "payouts:read", "reports:operational", "reports:financial"],
+  as_of: "2026-10-05T14:12:00Z",
+  timezone: "America/Chicago",
+};
+
+export const JORDAN: Session = {
+  membership_id: "mem_jordan00000001",
+  user: { id: "usr_jordan00000001", full_name: "Jordan Ellis", email: "jordan.ellis@alder-loom.example.com", title: "Business Administrator" },
+  merchant: ALDER,
+  role: "business_admin",
+  role_label: "Business admin",
+  permissions: ["overview:read", "payments:read", "customers:read", "disputes:read", "payouts:read", "notes:write", "reports:operational", "settings:read"],
+  as_of: "2026-10-05T14:12:00Z",
+  timezone: "America/Chicago",
+};
+
 export const PERSONAS: PersonasResponse = {
   merchants: [
     {

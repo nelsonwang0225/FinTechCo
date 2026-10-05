@@ -72,6 +72,14 @@
   min-width: 110px;
   max-width: 130px;
 }
+.cell-truncate {
+  display: inline-block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
 .row-link {
   color: inherit;
 }
@@ -303,4 +311,56 @@
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);
   margin: 0;
+}
+
+/* Stat cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.stat-label {
+  margin: 0;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+}
+.stat-value {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.stat-value .money {
+  text-align: left;
+}
+.stat-foot {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+
+/* Reconciliation table */
+.recon-table {
+  max-width: 480px;
+}
+.recon-table th[scope="row"] {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  background: transparent;
+  color: var(--color-ink);
+}
+.recon-table .recon-total th,
+.recon-table .recon-total td {
+  border-top: 2px solid var(--color-ink);
+  font-weight: 650;
 }
