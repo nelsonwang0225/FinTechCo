@@ -1,4 +1,4 @@
-"""Definition of Done 2: search, filter and paginate payments, open one, and the list agrees with the detail.
+"""Search, filter and paginate payments, open one, and the list agrees with the detail.
 
 Every filter is cross-checked against SQL on the same database.
 """

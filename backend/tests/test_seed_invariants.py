@@ -1,4 +1,4 @@
-"""Record integrity and money invariants of the seeded baseline.
+"""Record integrity and money invariants of the seeded dataset.
 
 Every check here is about records and ledger money. None of them sums
 attempts by outcome.
@@ -58,7 +58,7 @@ def test_pending_attempts_are_last_recent_and_online(seeded_conn: sqlite3.Connec
     rows = seeded_conn.execute(
         "SELECT a.payment_id, a.attempt_number, a.created_at, p.channel FROM payment_attempt a JOIN payment p ON p.id = a.payment_id WHERE a.outcome = 'pending'"
     ).fetchall()
-    assert rows, "the baseline should contain payments still in flight"
+    assert rows, "the seed should contain payments still in flight"
     as_of = one(seeded_conn, "SELECT value FROM seed_meta WHERE key = 'as_of'")
     for payment_id, number, created_at, channel in rows:
         assert channel != "in_store"

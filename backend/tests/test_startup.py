@@ -1,4 +1,4 @@
-"""Definition of Done 1: the documented commands start the services and a seeded user reaches the portal.
+"""The documented commands start the services and a seeded user reaches the portal.
 
 The Makefile is checked for the documented targets and commands; the seed +
 app + persona flow runs here in-process against a fresh database path.

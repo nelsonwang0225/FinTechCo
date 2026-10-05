@@ -2,7 +2,7 @@
 
 The seed_meta checksum row itself is excluded so the value is well defined.
 SQLite file bytes are not stable (page allocation, WAL), so this is what
-"identical baseline" means.
+"identical dataset" means.
 """
 
 from __future__ import annotations

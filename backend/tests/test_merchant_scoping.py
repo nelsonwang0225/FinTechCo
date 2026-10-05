@@ -1,7 +1,7 @@
-"""Definition of Done 3: another merchant's record requested by ID is denied by the backend (404, never data).
+"""Another merchant's record requested by ID is denied by the backend (404, never data).
 
-Each case uses a persona that holds the permission, so the check reaches the merchant scope. Later phases
-append their resource routes to CASES.
+Each case uses a persona that holds the permission, so the check reaches the merchant scope. A new resource
+route appends its cases to CASES.
 """
 
 from __future__ import annotations

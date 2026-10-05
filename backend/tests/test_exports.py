@@ -1,4 +1,4 @@
-"""Definition of Done 6: every CSV export honours the current filters and the merchant scope.
+"""Every CSV export honours the current filters and the merchant scope.
 
 For each report and a handful of filter combinations: every row satisfies every filter, every id in the file belongs to
 the merchant, the row count equals the filtered count the list endpoint reports, and permissions follow the matrix.

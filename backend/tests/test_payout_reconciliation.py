@@ -1,4 +1,4 @@
-"""Definition of Done 5: a payout detail reconciles exactly to its ledger movements, and the CSV downloads.
+"""A payout detail reconciles exactly to its ledger movements, and the CSV downloads.
 
 Every payout of every merchant is checked in the database; every payout a persona can reach is checked
 through the API and the CSV. Daniel (finance) downloads; Jordan (admin) is refused the CSV; Priya has no

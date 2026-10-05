@@ -1,7 +1,7 @@
 """Seed parameters. Everything here is fictional and synthetic.
 
 The reporting clock (AS_OF) and the 30-day window are constants; moving the
-demo date means changing AS_OF and reseeding. Parameter names are plain data
+scenario date means changing AS_OF and reseeding. Parameter names are plain data
 names on purpose.
 """
 

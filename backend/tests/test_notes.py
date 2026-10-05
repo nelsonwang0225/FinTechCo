@@ -1,4 +1,4 @@
-"""Definition of Done 4: a note persists after refresh and records the acting user."""
+"""A note persists after refresh and records the acting user."""
 
 from __future__ import annotations
 

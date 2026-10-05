@@ -1,4 +1,4 @@
-"""Definition of Done 8: `make reset` reproduces the identical baseline.
+"""`make reset` reproduces the identical seeded dataset.
 
 The logical checksum (every table ordered by primary key) is the definition
 of "identical". GOLDEN_CHECKSUM changes only with an intentional scenario

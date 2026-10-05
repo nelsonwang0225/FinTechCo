@@ -10,7 +10,7 @@ PY := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 DB := backend/data/fintechco.db
 
-.PHONY: setup seed reset run test check-boundary acceptance
+.PHONY: setup seed reset run test
 
 setup:
 	@if [ -z "$(PYTHON)" ]; then echo "No python3 interpreter found. Install Python 3.11 or newer."; exit 1; fi
@@ -45,9 +45,3 @@ test:
 	cd frontend && npx tsc --noEmit -p tsconfig.json
 	cd frontend && npx vitest run
 
-# Build-time only; deliberately not part of `make test`.
-check-boundary:
-	cd backend && .venv/bin/pytest -q tests/boundary
-
-acceptance:
-	cd backend && .venv/bin/pytest -v tests/test_dod_*.py

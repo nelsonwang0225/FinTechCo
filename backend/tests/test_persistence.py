@@ -1,4 +1,4 @@
-"""Definition of Done 7: data survives a restart. A note written through one app instance is read by a new one on the same file."""
+"""Data survives a restart. A note written through one app instance is read by a new one on the same file."""
 
 from __future__ import annotations
 
