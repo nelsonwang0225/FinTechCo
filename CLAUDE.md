@@ -39,8 +39,8 @@ backend/
     api/__init__.py           register_routers(): the list of router modules
     api/listing.py            shared period, pagination and "now" helpers for list endpoints
     api/schemas/              Pydantic response models (ApiModel forbids undeclared fields)
-    api/                      routers: dev, session, meta, overview, payments, attempts, payouts,
-                              customers, disputes, reports, settings
+    api/                      routers: dev, session, meta, overview, payments, attempts, payment_health,
+                              payouts, customers, disputes, reports, settings
     exports/csv.py            shared CSV writer and export activity record
     seed/                     scenario.py, generate.py, write.py, verify.py, checksum.py, __main__.py
   tests/                      pytest: one module per resource plus cross-cutting suites
@@ -57,7 +57,7 @@ frontend/
     layout/                   AppShell, SideNav, TopBar, PageHeader, DemoIndicator
     components/               DataTable, Pagination, FilterBar, ActiveFilters, Tabs, StatusBadge, Money,
                               Timestamp, DescriptionList, BarChart, Timeline, NoteComposer, states
-    pages/                    overview, payments, payment-detail, payouts, payout-detail, customers,
+    pages/                    overview, payments, payment-detail, payment-health, payouts, payout-detail, customers,
                               customer-detail, disputes, dispute-detail, reports, settings
     lib/format.ts             the only place money and timestamps are formatted
     lib/query.ts              URL query-string state for filters, sort, page, tab
@@ -126,7 +126,7 @@ Entities: Merchant, Location, User, Membership, Customer, Payment, PaymentAttemp
 
 | Permission | business_admin | operations_manager | finance_manager | read_only_analyst |
 |---|:-:|:-:|:-:|:-:|
-| `overview:read`, `payments:read` (list, Attempts tab, detail) | Y | Y | Y | Y |
+| `overview:read`, `payments:read` (list, Attempts tab, detail, Payment Health) | Y | Y | Y | Y |
 | `customers:read` | Y | Y | – | Y |
 | `disputes:read` | Y | Y | Y | Y |
 | `payouts:read` (list, detail) | Y | – | Y | Y |

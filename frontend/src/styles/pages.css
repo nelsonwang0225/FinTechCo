@@ -630,3 +630,37 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Payment health */
+.health-loading {
+  opacity: 0.7;
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .health-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.health-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.health-caveat {
+  color: var(--color-ink-secondary);
+  font-weight: 500;
+}
+.health-code {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-ink-faint);
+  font-weight: 400;
+}
+.health-action {
+  margin: var(--space-4) 0 0;
+  font-weight: 500;
+}
