@@ -7,12 +7,15 @@ import { useApi } from "../../api/useApi";
 import { ActiveFilters, type Chip } from "../../components/ActiveFilters";
 import { DataTable, type Column } from "../../components/DataTable";
 import { FilterBar, FilterSearch, FilterSelect } from "../../components/FilterBar";
+import { HealthContextBar } from "../../components/HealthContextBar";
 import { Money } from "../../components/Money";
 import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { IconDownload } from "../../layout/icons";
+import { formatCount } from "../../lib/format";
+import { backToHealthHref, paymentDetailHref } from "../../lib/healthScope";
 import type { QueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
@@ -40,6 +43,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
   const { page: _page, page_size: _pageSize, ...exportParams } = params;
   const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
+  const healthBack = backToHealthHref(query);
+  const detailHref = (paymentId: string) => paymentDetailHref(paymentId, query);
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
@@ -61,7 +66,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       header: "Attempted",
       sortKey: "created_at",
       render: (a) => (
-        <Link to={`/payments/${a.payment_id}`} className="row-link" onClick={(e) => e.stopPropagation()}>
+        <Link to={detailHref(a.payment_id)} className="row-link" onClick={(e) => e.stopPropagation()}>
           <Timestamp iso={a.created_at} />
         </Link>
       ),
@@ -83,6 +88,13 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
+      {healthBack && list.data ? (
+        <HealthContextBar
+          parts={contextParts(meta, query, list.data.period.range_label)}
+          backHref={healthBack}
+          result={`${formatCount(list.data.total)} ${query.get("outcome") === "failed" ? "failed " : ""}attempt${list.data.total === 1 ? "" : "s"}`}
+        />
+      ) : null}
       <FilterBar>
         <FilterSearch id="attempts-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
@@ -128,7 +140,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
             rowKey={(a) => a.id}
             sort={{ sort, dir }}
             onSort={onSort}
-            onRowClick={(a) => navigate(`/payments/${a.payment_id}`)}
+            onRowClick={(a) => navigate(detailHref(a.payment_id))}
             loading={list.loading}
           />
           <Pagination page={list.data.page} pageSize={list.data.page_size} total={list.data.total} onPage={(p) => query.set({ page: p })} />
@@ -136,4 +148,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       ) : null}
     </>
   );
+}
+
+/** The context bar's description of the list, from the filters in the URL, in the order a person reads them. */
+function contextParts(meta: Meta, query: QueryState, rangeLabel: string): string[] {
+  const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
+  const parts = [rangeLabel, query.get("channel") ? label(meta.channels, query.get("channel")) : "All channels"];
+  if (query.get("location_id")) parts.push(meta.locations.find((l) => l.id === query.get("location_id"))?.name ?? "Unknown location");
+  if (query.get("outcome")) parts.push(label(meta.attempt_outcomes, query.get("outcome")));
+  if (query.get("failure_code")) parts.push(label(meta.failure_codes, query.get("failure_code")));
+  if (query.get("q")) parts.push(`Search: ${query.get("q")}`);
+  return parts;
 }

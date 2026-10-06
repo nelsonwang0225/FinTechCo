@@ -7,13 +7,15 @@ import { useApi } from "../../api/useApi";
 import { ActiveFilters, type Chip } from "../../components/ActiveFilters";
 import { DataTable, type Column } from "../../components/DataTable";
 import { FilterBar, FilterSearch, FilterSelect } from "../../components/FilterBar";
+import { HealthContextBar } from "../../components/HealthContextBar";
 import { Money } from "../../components/Money";
 import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { IconDownload } from "../../layout/icons";
-import { formatCents, parseDollarsToCents } from "../../lib/format";
+import { formatCents, formatCount, parseDollarsToCents } from "../../lib/format";
+import { backToHealthHref, paymentDetailHref } from "../../lib/healthScope";
 import type { QueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
@@ -42,6 +44,8 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
   const list = useApi<PaymentListResponse>(`/api/payments${queryString(params)}`);
   const { page: _page, page_size: _pageSize, ...exportParams } = params;
   const exportHref = `/api/reports/payments.csv${queryString(exportParams)}`;
+  const healthBack = backToHealthHref(query);
+  const detailHref = (id: string) => paymentDetailHref(id, query);
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
@@ -64,7 +68,7 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       header: "Created",
       sortKey: "created_at",
       render: (p) => (
-        <Link to={`/payments/${p.id}`} className="row-link" onClick={(e) => e.stopPropagation()}>
+        <Link to={detailHref(p.id)} className="row-link" onClick={(e) => e.stopPropagation()}>
           <Timestamp iso={p.created_at} />
         </Link>
       ),
@@ -85,6 +89,17 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
+      {healthBack && list.data ? (
+        <HealthContextBar
+          parts={contextParts(meta, query, list.data.period.range_label)}
+          backHref={healthBack}
+          result={
+            <>
+              {formatCount(list.data.total)} payment{list.data.total === 1 ? "" : "s"} · {formatCents(list.data.total_amount_cents)}
+            </>
+          }
+        />
+      ) : null}
       <FilterBar>
         <FilterSearch id="payments-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or payment id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} />
@@ -130,7 +145,7 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
             rowKey={(p) => p.id}
             sort={{ sort, dir }}
             onSort={onSort}
-            onRowClick={(p) => navigate(`/payments/${p.id}`)}
+            onRowClick={(p) => navigate(detailHref(p.id))}
             loading={list.loading}
           />
           <Pagination page={list.data.page} pageSize={list.data.page_size} total={list.data.total} onPage={(p) => query.set({ page: p })} />
@@ -138,6 +153,18 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       ) : null}
     </>
   );
+}
+
+/** The context bar's description of the list, from the filters in the URL, in the order a person reads them. */
+function contextParts(meta: Meta, query: QueryState, rangeLabel: string): string[] {
+  const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
+  const parts = [rangeLabel, query.get("channel") ? label(meta.channels, query.get("channel")) : "All channels"];
+  if (query.get("location_id")) parts.push(meta.locations.find((l) => l.id === query.get("location_id"))?.name ?? "Unknown location");
+  if (query.get("status")) parts.push(label(meta.payment_statuses, query.get("status")));
+  if (query.get("amount_min_cents")) parts.push(`Min ${formatCents(Number(query.get("amount_min_cents")))}`);
+  if (query.get("amount_max_cents")) parts.push(`Max ${formatCents(Number(query.get("amount_max_cents")))}`);
+  if (query.get("q")) parts.push(`Search: ${query.get("q")}`);
+  return parts;
 }
 
 /** Dollars typed by a person, stored in the URL as integer cents. Parsing is integer arithmetic, never a float. */

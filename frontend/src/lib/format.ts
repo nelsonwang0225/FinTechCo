@@ -212,6 +212,23 @@ export function formatPointsBp(bp: number): string {
   return bp < 0 ? `${MINUS}${body}` : `+${body}`;
 }
 
+/** Whole minutes from one recorded instant to a later one (rounded down); 0 when `to` is not later. */
+export function minutesBetween(fromIso: string, toIso: string): number {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  return ms > 0 ? Math.floor(ms / 60_000) : 0;
+}
+
+/** An elapsed time in words: "under a minute", "12 minutes", "2 hours 5 minutes", "3 days 4 hours". */
+export function formatElapsedMinutes(minutes: number): string {
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return unit(minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 === 0 ? unit(hours, "hour") : `${unit(hours, "hour")} ${unit(minutes % 60, "minute")}`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? unit(days, "day") : `${unit(days, "day")} ${unit(hours % 24, "hour")}`;
+}
+
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
 export function nowMs(): number {
   return Date.now();

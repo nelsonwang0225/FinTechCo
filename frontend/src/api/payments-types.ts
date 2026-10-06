@@ -53,6 +53,9 @@ export interface PaymentListItem {
 }
 
 export interface PaymentListResponse extends ListResponse<PaymentListItem> {
+  /** Payment amount summed over every match, not just this page. */
+  total_amount_cents: number;
+  currency: string;
   period: PeriodInfo;
 }
 

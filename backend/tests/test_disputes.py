@@ -80,7 +80,7 @@ def test_dispute_note_persists_and_records_the_actor(client_as, app, ids: Ids) -
     after = fresh.get(f"/api/disputes/{dispute_id}").json()
     assert len(after["notes"]) == len(before["notes"]) + 1
     assert after["notes"][-1]["id"] == note["id"] and after["notes"][-1]["body"] == "Requested the carrier's proof of delivery."
-    assert any(e["kind"] == "note" and e["ref_id"] == note["id"] and e["title"] == "Note by Maya Chen" for e in after["history"])
+    assert any(e["kind"] == "note" and e["ref_id"] == note["id"] and e["title"] == "Note by Maya Chen" and e["upcoming"] is False for e in after["history"])
     # It also shows in the activity log for the admin, against the dispute.
     activity = fresh.get("/api/settings/activity?kind=note").json()
     assert any(i["id"] == note["id"] and i["subject"]["kind"] == "dispute" and i["subject"]["id"] == dispute_id for i in activity["items"])

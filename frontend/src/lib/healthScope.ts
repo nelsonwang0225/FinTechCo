@@ -52,9 +52,39 @@ export function unresolvedPaymentsHref(scope: HealthScope, backScope: HealthScop
   return `/payments${queryString({ ...scopeParams(scope), status: "failed", ...scopeBackParams(backScope) })}`;
 }
 
-/** The existing Attempts tab filtered to failed attempts with one recorded failure code, in the same scope. */
-export function failedAttemptsHref(scope: HealthScope, failureCode: string): string {
-  return `/payments${queryString({ tab: "attempts", ...scopeParams(scope), outcome: "failed", failure_code: failureCode, ...scopeBackParams(scope) })}`;
+/**
+ * The existing Attempts tab filtered to failed attempts in `scope`, optionally narrowed to one recorded failure code.
+ * `backScope` works as for unresolvedPaymentsHref: a channel row on the all-channels view returns to all channels.
+ */
+export function failedAttemptsHref(scope: HealthScope, failureCode: string | null = null, backScope: HealthScope = scope): string {
+  return `/payments${queryString({ tab: "attempts", ...scopeParams(scope), outcome: "failed", failure_code: failureCode, ...scopeBackParams(backScope) })}`;
+}
+
+/** A payment detail link from Payment Health's own unresolved table: it carries the unresolved list it belongs to. */
+export function unresolvedPaymentDetailHref(paymentId: string, scope: HealthScope): string {
+  return `/payments/${encodeURIComponent(paymentId)}${queryString({ ...scopeParams(scope), status: "failed", ...scopeBackParams(scope) })}`;
+}
+
+/** True when the current list or detail page was reached from Payment Health. */
+export function fromHealth(query: QueryState): boolean {
+  return query.get(`${HEALTH_SCOPE_PREFIX}period`) !== "";
+}
+
+/**
+ * A payment detail link from a list. Reached from Payment Health, it carries the whole list query (filters, tab, sort,
+ * page and the `ph_` scope) so the detail page can link back to exactly that list and on to Payment Health.
+ */
+export function paymentDetailHref(paymentId: string, query: QueryState): string {
+  const path = `/payments/${encodeURIComponent(paymentId)}`;
+  return fromHealth(query) && query.search ? `${path}?${query.search}` : path;
+}
+
+/** The list a detail page was opened from, when that list was reached from Payment Health; null otherwise. */
+export function backToListLink(query: QueryState): { href: string; label: string } | null {
+  if (!fromHealth(query)) return null;
+  const href = `/payments?${query.search}`;
+  if (query.get("tab") === "attempts") return { href, label: query.get("outcome") === "failed" ? "Back to failed attempts" : "Back to attempts" };
+  return { href, label: query.get("status") === "failed" ? "Back to unresolved payments" : "Back to payments" };
 }
 
 /** The Payment Health link a list page shows when it was opened from Payment Health; null otherwise. */

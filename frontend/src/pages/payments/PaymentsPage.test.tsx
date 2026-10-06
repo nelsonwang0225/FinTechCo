@@ -151,6 +151,57 @@ describe("PaymentsPage", () => {
       expect(backLink(el)?.getAttribute("href")).toBe("/payment-health?period=last_7_days");
     });
 
+    const OCT_SCOPE = "period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app";
+    const OCT_BACK = "ph_period=custom&ph_from=2026-10-01&ph_to=2026-10-02&ph_channel=mobile_app";
+    const OCT_PERIOD = { preset: "custom", label: "Custom", from_date: "2026-10-01", to_date: "2026-10-02", range_label: "Oct 1 – 2, 2026" };
+    const unresolvedHandler: Handler = (url, init) => {
+      if (url.startsWith("/api/payments?")) return { status: 200, body: { ...PAYMENTS, total: 12, total_amount_cents: 422811, period: OCT_PERIOD } };
+      if (url.startsWith("/api/attempts?")) return { status: 200, body: { ...ATTEMPTS, total: 29, period: OCT_PERIOD } };
+      return handler(url, init);
+    };
+    const contextBar = (el: HTMLElement) => el.querySelector("section[aria-label='Opened from Payment Health']");
+
+    it("shows the context bar on the unresolved list with the count and value that were clicked, and exports exactly that set", async () => {
+      mockFetch(unresolvedHandler);
+      page = await renderPage(<PaymentsPage />, `/payments?${OCT_SCOPE}&status=failed&${OCT_BACK}`);
+      await flush();
+      const el = page.container;
+      expect(contextBar(el)?.querySelector(".health-context-scope")?.textContent).toBe("From Payment Health · Oct 1 – 2, 2026 · Mobile app · Failed");
+      expect(contextBar(el)?.querySelector(".health-context-result")?.textContent).toBe("12 payments · $4,228.11");
+      // The way back lives in the context bar.
+      expect(backLink(el)?.closest("section")).toBe(contextBar(el));
+      // Maya (reports:operational) can export, and the export carries exactly the list's filters.
+      expect(el.querySelector("a[data-export=payments]")?.getAttribute("href")).toBe(
+        "/api/reports/payments.csv?period=custom&from=2026-10-01&to=2026-10-02&status=failed&channel=mobile_app&sort=created_at&dir=desc",
+      );
+    });
+
+    it("opens a payment with the list's query, so detail can link back to the list and to Payment Health", async () => {
+      mockFetch(unresolvedHandler);
+      page = await renderPage(<PaymentsPage />, `/payments?${OCT_SCOPE}&status=failed&${OCT_BACK}`);
+      await flush();
+      const link = page.container.querySelector("tbody tr a.row-link");
+      expect(link?.getAttribute("href")).toBe(`/payments/pay_anchor00000001?${OCT_SCOPE}&status=failed&${OCT_BACK}`);
+    });
+
+    it("keeps plain detail links and no context bar outside the flow", async () => {
+      mockFetch(handler);
+      page = await renderPage(<PaymentsPage />, "/payments?period=last_7_days&status=failed");
+      await flush();
+      expect(contextBar(page.container)).toBeNull();
+      expect(page.container.querySelector("tbody tr a.row-link")?.getAttribute("href")).toBe("/payments/pay_anchor00000001");
+    });
+
+    it("describes a signal drill-down on the attempts tab with its failed-attempt count", async () => {
+      mockFetch(unresolvedHandler);
+      page = await renderPage(<PaymentsPage />, `/payments?tab=attempts&${OCT_SCOPE}&outcome=failed&failure_code=issuer_unavailable&${OCT_BACK}`);
+      await flush();
+      const el = page.container;
+      expect(contextBar(el)?.querySelector(".health-context-scope")?.textContent).toBe("From Payment Health · Oct 1 – 2, 2026 · Mobile app · Failed · Issuer unavailable");
+      expect(contextBar(el)?.querySelector(".health-context-result")?.textContent).toBe("29 failed attempts");
+      expect(el.querySelector("tbody tr a.row-link")?.getAttribute("href")).toContain(`?tab=attempts&${OCT_SCOPE}&outcome=failed&failure_code=issuer_unavailable&${OCT_BACK}`);
+    });
+
     it("puts a chosen signal in the URL and the request without forcing an outcome", async () => {
       const { calls } = mockFetch(handler);
       page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");

@@ -180,8 +180,16 @@ def list_payments(
         sort=sort,
         direction=direction,
     )
-    rows, total = payments_q.list_payments(principal.merchant_id, conn, filters, page)
-    return PaymentListResponse(items=[list_item(r) for r in rows], page=page.page, page_size=page.page_size, total=total, period=period_info(resolved))
+    rows, total, total_amount_cents = payments_q.list_payments(principal.merchant_id, conn, filters, page)
+    return PaymentListResponse(
+        items=[list_item(r) for r in rows],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+        total_amount_cents=total_amount_cents,
+        currency="USD",
+        period=period_info(resolved),
+    )
 
 
 @router.get("/{payment_id}", response_model=PaymentDetail)

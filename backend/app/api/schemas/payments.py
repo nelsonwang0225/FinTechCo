@@ -57,6 +57,8 @@ class PaymentListResponse(ApiModel):
     page: int
     page_size: int
     total: int
+    total_amount_cents: int  # payment amount summed over every match, not just this page
+    currency: str
     period: PeriodInfo
 
 

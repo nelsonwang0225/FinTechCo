@@ -38,7 +38,9 @@ def build_timeline(
     events: list[TimelineEvent] = []
 
     def add(kind: str, at: str, title: str, detail: str | None = None, amount_cents: int | None = None, ref_id: str | None = None) -> None:
-        events.append(TimelineEvent(kind, at, title, detail, at > now_iso, amount_cents, ref_id))
+        # A note is written on the wall clock, which runs ahead of the reporting clock; it records something that
+        # already happened, so it is never upcoming.
+        events.append(TimelineEvent(kind, at, title, detail, kind != "note" and at > now_iso, amount_cents, ref_id))
 
     where = channel_label if not payment["location_name"] else f"{channel_label} · {payment['location_name']}"
     add("order_received", payment["created_at"], "Order received", f"{payment['order_reference']} · {where}", payment["amount_cents"])
@@ -99,7 +101,9 @@ def build_dispute_history(
     events: list[TimelineEvent] = []
 
     def add(kind: str, at: str, title: str, detail: str | None = None, amount_cents: int | None = None, ref_id: str | None = None) -> None:
-        events.append(TimelineEvent(kind, at, title, detail, at > now_iso, amount_cents, ref_id))
+        # A note is written on the wall clock, which runs ahead of the reporting clock; it records something that
+        # already happened, so it is never upcoming.
+        events.append(TimelineEvent(kind, at, title, detail, kind != "note" and at > now_iso, amount_cents, ref_id))
 
     add("order_received", dispute["payment_created_at"], "Payment received", f"{dispute['order_reference']} · {_usd(dispute['payment_amount_cents'])}", dispute["payment_amount_cents"], dispute["payment_id"])
     reason = DISPUTE_REASON_LABELS.get(dispute["reason"], dispute["reason"])

@@ -101,6 +101,8 @@ export const PAYMENTS: PaymentListResponse = {
   page: 1,
   page_size: 25,
   total: 2,
+  total_amount_cents: 39998,
+  currency: "USD",
   period: PERIOD,
 };
 

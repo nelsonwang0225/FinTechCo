@@ -14,7 +14,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
 import { formatCount, formatDate, formatDateShort, formatPointsBp, formatRateBp, formatTimestampMinute } from "../../lib/format";
-import { failedAttemptsHref, scopeFromPeriod, unresolvedPaymentsHref, type HealthScope } from "../../lib/healthScope";
+import { failedAttemptsHref, scopeFromPeriod, unresolvedPaymentDetailHref, unresolvedPaymentsHref, type HealthScope } from "../../lib/healthScope";
 import { useQueryState, type QueryState } from "../../lib/query";
 import { PeriodFilter, periodParams } from "../payments/PeriodFilter";
 
@@ -106,12 +106,12 @@ function HealthBody({ data, query, loading }: { data: PaymentHealth; query: Quer
       ) : (
         <>
           <AttentionCard data={data} scope={scope} />
-          <KpiRow data={data} />
+          <KpiRow data={data} scope={scope} />
           <TrendCard data={data} />
         </>
       )}
 
-      <ChannelTable data={data} query={query} />
+      <ChannelTable data={data} query={query} scope={scope} />
 
       {noFailed ? (
         <section className="card health-none" aria-label="Failed attempts">
@@ -123,8 +123,8 @@ function HealthBody({ data, query, loading }: { data: PaymentHealth; query: Quer
         <>
           <SignalsCard data={data} scope={scope} />
           <div className="health-grid">
-            <RecoveryCard data={data} />
-            <ValueCard data={data} />
+            <RecoveryCard data={data} scope={scope} />
+            <ValueCard data={data} scope={scope} />
           </div>
           <UnresolvedCard data={data} scope={scope} />
         </>
@@ -157,9 +157,27 @@ function AttentionCard({ data, scope }: { data: PaymentHealth; scope: HealthScop
           <Link className="btn btn-primary" to={unresolvedPaymentsHref(reviewScope, scope)}>
             Review unresolved payments
           </Link>
+          <Link className="btn" to={failedAttemptsHref(reviewScope, null, scope)}>
+            View failed attempts
+          </Link>
         </div>
       ) : null}
     </section>
+  );
+}
+
+/* ----------------------------------------------------------------------- evidence links */
+
+/**
+ * A figure that opens the records it was counted from. Zero has nothing to open, so it stays plain text. The
+ * accessible name says what the list will hold, so "12" reads as "View the 12 unresolved payments".
+ */
+function EvidenceLink({ to, count, what, className, children }: { to: string; count: number; what: string; className?: string; children: ReactNode }) {
+  if (count === 0) return <>{children}</>;
+  return (
+    <Link to={to} className={className ? `evidence-link ${className}` : "evidence-link"} title={`View the ${formatCount(count)} ${what}`} onClick={(e) => e.stopPropagation()}>
+      {children}
+    </Link>
   );
 }
 
@@ -199,10 +217,16 @@ function KpiCard({ label, level, tip, value, feet }: { label: string; level: "At
   );
 }
 
-function KpiRow({ data }: { data: PaymentHealth }) {
+function KpiRow({ data, scope }: { data: PaymentHealth; scope: HealthScope }) {
   const { period } = data.scope;
   const { recovery } = data;
-  const recoveryFoot = `${formatCount(recovery.recovered)} recovered · ${formatCount(recovery.unresolved)} unresolved${recovery.attempt_pending > 0 ? ` · ${formatCount(recovery.attempt_pending)} attempt pending` : ""}`;
+  const unresolvedHref = unresolvedPaymentsHref(scope);
+  const recoveryFoot = (
+    <>
+      {formatCount(recovery.recovered)} recovered · <EvidenceLink to={unresolvedHref} count={recovery.unresolved} what="unresolved payments">{formatCount(recovery.unresolved)} unresolved</EvidenceLink>
+      {recovery.attempt_pending > 0 ? ` · ${formatCount(recovery.attempt_pending)} attempt pending` : ""}
+    </>
+  );
   return (
     <div className="cards cards-4 health-kpis">
       <KpiCard
@@ -215,7 +239,7 @@ function KpiRow({ data }: { data: PaymentHealth }) {
       <KpiCard
         label="Failed attempts"
         level="Attempt-level"
-        value={formatCount(period.failed)}
+        value={period.failed > 0 ? <EvidenceLink to={failedAttemptsHref(scope)} count={period.failed} what="failed attempts" className="stat-link">{formatCount(period.failed)}</EvidenceLink> : formatCount(period.failed)}
         feet={[period.failed_share_bp === null ? NO_COMPLETED_ATTEMPTS : `${formatRateBp(period.failed_share_bp)} of ${formatCount(period.completed)} completed attempts`]}
       />
       <KpiCard
@@ -231,7 +255,10 @@ function KpiRow({ data }: { data: PaymentHealth }) {
         value={<Money cents={recovery.affected_cents} />}
         feet={[
           <>
-            <Money cents={recovery.recovered_cents} /> recovered · <Money cents={recovery.unresolved_cents} /> unresolved
+            <Money cents={recovery.recovered_cents} /> recovered ·{" "}
+            <EvidenceLink to={unresolvedHref} count={recovery.unresolved} what="unresolved payments">
+              <Money cents={recovery.unresolved_cents} /> unresolved
+            </EvidenceLink>
           </>,
         ]}
       />
@@ -273,7 +300,7 @@ function TrendCard({ data }: { data: PaymentHealth }) {
 
 /* ----------------------------------------------------------------------- channels */
 
-function ChannelTable({ data, query }: { data: PaymentHealth; query: QueryState }) {
+function ChannelTable({ data, query, scope }: { data: PaymentHealth; query: QueryState; scope: HealthScope }) {
   const selected = data.channel;
   const columns: Column<ChannelHealth>[] = [
     {
@@ -294,6 +321,17 @@ function ChannelTable({ data, query }: { data: PaymentHealth; query: QueryState 
     { key: "rate", header: "Success rate (period)", align: "right", render: (c) => (c.period.success_rate_bp === null ? <span className="muted">—</span> : formatRateBp(c.period.success_rate_bp)) },
     { key: "baseline", header: "Baseline", align: "right", render: (c) => (c.baseline.success_rate_bp === null ? <span className="muted">—</span> : formatRateBp(c.baseline.success_rate_bp)) },
     { key: "completed", header: "Completed attempts", align: "right", render: (c) => formatCount(c.period.completed) },
+    {
+      key: "failed",
+      header: "Failed attempts",
+      align: "right",
+      // Opens that channel's failed attempts; Back returns to the view the table is on, not the channel.
+      render: (c) => (
+        <EvidenceLink to={failedAttemptsHref({ ...scope, channel: c.channel }, null, scope)} count={c.period.failed} what={`failed ${c.channel_label} attempts`}>
+          {formatCount(c.period.failed)}
+        </EvidenceLink>
+      ),
+    },
     { key: "status", header: "Status", render: (c) => <StatusBadge status={c.status} label={c.status_label} /> },
   ];
   return (
@@ -364,19 +402,30 @@ function SignalsCard({ data, scope }: { data: PaymentHealth; scope: HealthScope 
 
 /* ----------------------------------------------------------------------- recovery */
 
-function FlowStep({ label, value, detail, tone }: { label: string; value: number; detail?: string; tone?: ChannelStatus | "info" }) {
+function FlowStep({ label, value, detail, tone, link }: { label: string; value: number; detail?: string; tone?: ChannelStatus | "info"; link?: { to: string; what: string } }) {
+  const figure = (
+    <>
+      {formatCount(value)}
+      {detail ? ` (${detail})` : ""}
+    </>
+  );
   return (
     <li className={tone ? `health-flow-step health-flow-${tone}` : "health-flow-step"}>
       <span className="health-flow-label">{label}</span>{" "}
       <span className="health-flow-value num">
-        {formatCount(value)}
-        {detail ? ` (${detail})` : ""}
+        {link ? (
+          <EvidenceLink to={link.to} count={value} what={link.what}>
+            {figure}
+          </EvidenceLink>
+        ) : (
+          figure
+        )}
       </span>
     </li>
   );
 }
 
-function RecoveryCard({ data }: { data: PaymentHealth }) {
+function RecoveryCard({ data, scope }: { data: PaymentHealth; scope: HealthScope }) {
   const r = data.recovery;
   const windowLabel = r.affected > 0 && r.recovered_within_window_share_bp !== null ? formatRateBp(r.recovered_within_window_share_bp) : undefined;
   return (
@@ -390,14 +439,14 @@ function RecoveryCard({ data }: { data: PaymentHealth }) {
         <FlowStep label="Recovered within 1 hour" value={r.recovered_within_window} detail={windowLabel} tone="normal" />
         {r.recovered_later > 0 ? <FlowStep label="Recovered after 1 hour" value={r.recovered_later} tone="normal" /> : null}
         {r.attempt_pending > 0 ? <FlowStep label="Attempt pending" value={r.attempt_pending} tone="info" /> : null}
-        <FlowStep label="Unresolved" value={r.unresolved} tone="degraded" />
+        <FlowStep label="Unresolved" value={r.unresolved} tone="degraded" link={{ to: unresolvedPaymentsHref(scope), what: "unresolved payments" }} />
       </ol>
       <p className="stat-foot">Counted once per payment. A payment declined twice and then completed is one affected payment and one recovered payment.</p>
     </section>
   );
 }
 
-function ValueCard({ data }: { data: PaymentHealth }) {
+function ValueCard({ data, scope }: { data: PaymentHealth; scope: HealthScope }) {
   const r = data.recovery;
   return (
     <section className="card health-value" aria-labelledby="health-value-heading">
@@ -407,7 +456,11 @@ function ValueCard({ data }: { data: PaymentHealth }) {
       <dl className="bucket-list">
         <ValueRow label="Affected" cents={r.affected_cents} />
         <ValueRow label="Recovered" cents={r.recovered_cents} />
-        <ValueRow label="Unresolved" cents={r.unresolved_cents} />
+        <ValueRow
+          label="Unresolved"
+          cents={r.unresolved_cents}
+          link={{ to: unresolvedPaymentsHref(scope), count: r.unresolved, what: "unresolved payments" }}
+        />
         {r.attempt_pending > 0 ? <ValueRow label="Attempt pending" cents={r.attempt_pending_cents} /> : null}
       </dl>
       <p className="stat-foot">Payment amount counted once per payment.</p>
@@ -415,12 +468,18 @@ function ValueCard({ data }: { data: PaymentHealth }) {
   );
 }
 
-function ValueRow({ label, cents }: { label: string; cents: number }) {
+function ValueRow({ label, cents, link }: { label: string; cents: number; link?: { to: string; count: number; what: string } }) {
   return (
     <div className="bucket-row">
       <dt>{label}</dt>
       <dd className="money">
-        <Money cents={cents} />
+        {link ? (
+          <EvidenceLink to={link.to} count={link.count} what={link.what}>
+            <Money cents={cents} />
+          </EvidenceLink>
+        ) : (
+          <Money cents={cents} />
+        )}
       </dd>
     </div>
   );
@@ -437,7 +496,7 @@ function UnresolvedCard({ data, scope }: { data: PaymentHealth; scope: HealthSco
       header: "Order",
       className: "secondary",
       render: (p) => (
-        <Link to={`/payments/${p.id}`} className="row-link mono" onClick={(e) => e.stopPropagation()}>
+        <Link to={unresolvedPaymentDetailHref(p.id, scope)} className="row-link mono" onClick={(e) => e.stopPropagation()}>
           {p.order_reference}
         </Link>
       ),
@@ -460,7 +519,7 @@ function UnresolvedCard({ data, scope }: { data: PaymentHealth; scope: HealthSco
         <p className="health-none-text">No unresolved payments in this scope.</p>
       ) : (
         <>
-          <DataTable caption="Payments requiring attention" columns={columns} rows={unresolved.items} rowKey={(p) => p.id} onRowClick={(p) => navigate(`/payments/${p.id}`)} />
+          <DataTable caption="Payments requiring attention" columns={columns} rows={unresolved.items} rowKey={(p) => p.id} onRowClick={(p) => navigate(unresolvedPaymentDetailHref(p.id, scope))} />
           <p className="health-review-all">
             <Link to={unresolvedPaymentsHref(scope)}>Review all {formatCount(unresolved.total)} unresolved payments</Link>
           </p>

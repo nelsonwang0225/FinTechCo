@@ -576,7 +576,10 @@ describe("PaymentHealthPage", () => {
     expect(value?.textContent).toContain("Payment amount counted once per payment.");
     const rows = Array.from(page.container.querySelectorAll(".health-unresolved tbody tr"));
     expect(rows.length).toBe(2);
-    expect(rows[0]?.querySelector("a")?.getAttribute("href")).toBe("/payments/pay_54xujaox3j3tpp");
+    // The detail link carries the unresolved list it belongs to, so the detail page can link back to it and to here.
+    expect(rows[0]?.querySelector("a")?.getAttribute("href")).toBe(
+      "/payments/pay_54xujaox3j3tpp?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app&status=failed&ph_period=custom&ph_from=2026-10-01&ph_to=2026-10-02&ph_channel=mobile_app",
+    );
     expect(rows[0]?.querySelector("a")?.textContent).toBe("AL-12298");
     expect(rows[0]?.textContent).toContain("Beatriz Kim");
     expect(rows[0]?.textContent).toContain("$981.23");
@@ -720,5 +723,64 @@ describe("PaymentHealthPage", () => {
     await flush();
     expect(text()).toContain("Your role does not include this section");
     expect(page.container.querySelector(".health")).toBeNull();
+  });
+
+  describe("every figure opens the records it was counted from", () => {
+    const LAST7_BACK = "ph_period=last_7_days";
+    const OCT_BACK = "ph_period=custom&ph_from=2026-10-01&ph_to=2026-10-02&ph_channel=mobile_app";
+
+    function evidenceLinks(): { text: string; href: string | null }[] {
+      return Array.from(page?.container.querySelectorAll("a.evidence-link") ?? []).map((a) => ({ text: a.textContent ?? "", href: a.getAttribute("href") }));
+    }
+
+    it("last 7 days, all channels: failed attempts 90, Mobile app 52, unresolved 28 and $7,622.73, each to the same scope", async () => {
+      mockFetch(handlerFor(LAST_7));
+      page = await renderPage(<PaymentHealthPage />, "/payment-health");
+      await flush();
+      const failedAll = `/payments?tab=attempts&period=last_7_days&outcome=failed&${LAST7_BACK}`;
+      const unresolvedAll = `/payments?period=last_7_days&status=failed&${LAST7_BACK}`;
+      expect(evidenceLinks()).toEqual([
+        { text: "90", href: failedAll },
+        { text: "28 unresolved", href: unresolvedAll },
+        { text: "$7,622.73 unresolved", href: unresolvedAll },
+        { text: "20", href: `/payments?tab=attempts&period=last_7_days&channel=website&outcome=failed&${LAST7_BACK}` },
+        { text: "52", href: `/payments?tab=attempts&period=last_7_days&channel=mobile_app&outcome=failed&${LAST7_BACK}` },
+        { text: "18", href: `/payments?tab=attempts&period=last_7_days&channel=in_store&outcome=failed&${LAST7_BACK}` },
+        { text: "28", href: unresolvedAll },
+        { text: "$7,622.73", href: unresolvedAll },
+      ]);
+      // The degraded channel from the attention summary: its failed attempts and its unresolved payments; Back returns here.
+      expect(linkByText("View failed attempts")?.getAttribute("href")).toBe(`/payments?tab=attempts&period=last_7_days&channel=mobile_app&outcome=failed&${LAST7_BACK}`);
+      expect(linkByText("Review unresolved payments")?.getAttribute("href")).toBe(`/payments?period=last_7_days&channel=mobile_app&status=failed&${LAST7_BACK}`);
+      // Affected and recovered have no list that returns exactly them, so they are not links.
+      expect(evidenceLinks().some((l) => l.text === "83" || l.text.includes("55 recovered"))).toBe(false);
+    });
+
+    it("Oct 1–2, Mobile app: failed attempts 42, unresolved 12 and $4,228.11", async () => {
+      mockFetch(handlerFor(OCT_MOBILE));
+      page = await renderPage(<PaymentHealthPage />, "/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app");
+      await flush();
+      const scope = "period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app";
+      const links = evidenceLinks();
+      expect(links[0]).toEqual({ text: "42", href: `/payments?tab=attempts&${scope}&outcome=failed&${OCT_BACK}` });
+      expect(links.filter((l) => l.href === `/payments?${scope}&status=failed&${OCT_BACK}`).map((l) => l.text)).toEqual([
+        "12 unresolved",
+        "$4,228.11 unresolved",
+        "12",
+        "$4,228.11",
+      ]);
+      expect(cardByLabel("Failed attempts")?.querySelector("a")?.getAttribute("title")).toBe("View the 42 failed attempts");
+    });
+
+    it("a channel row click still scopes the page, and its failed-attempts link does not", async () => {
+      mockFetch(handlerFor(LAST_7));
+      page = await renderPage(<PaymentHealthPage />, "/payment-health");
+      await flush();
+      const header = Array.from(page.container.querySelectorAll(".health-channels th")).map((th) => th.textContent);
+      expect(header).toContain("Failed attempts");
+      const mobileRow = page.container.querySelectorAll(".health-channels tbody tr")[1];
+      const failed = Array.from(mobileRow?.querySelectorAll("a.evidence-link") ?? [])[0];
+      expect(failed?.textContent).toBe("52");
+    });
   });
 });

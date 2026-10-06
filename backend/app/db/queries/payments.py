@@ -66,15 +66,16 @@ def _where(merchant_id: str, f: PaymentFilters) -> tuple[str, dict[str, object]]
     return " AND ".join(clauses), params
 
 
-def list_payments(merchant_id: str, conn: sqlite3.Connection, f: PaymentFilters, page: Page) -> tuple[list[sqlite3.Row], int]:
+def list_payments(merchant_id: str, conn: sqlite3.Connection, f: PaymentFilters, page: Page) -> tuple[list[sqlite3.Row], int, int]:
+    """One page of matching payments, the match count, and the summed amount (integer cents) of every match."""
     where, params = _where(merchant_id, f)
-    total = conn.execute(f"SELECT COUNT(*) FROM payment_summary ps WHERE {where}", params).fetchone()[0]
+    total, total_amount_cents = conn.execute(f"SELECT COUNT(*), COALESCE(SUM(ps.amount_cents), 0) FROM payment_summary ps WHERE {where}", params).fetchone()
     order = order_clause(SORT_COLUMNS, f.sort, f.direction, "ps.id")
     rows = conn.execute(
         f"SELECT ps.* FROM payment_summary ps WHERE {where} {order} LIMIT :limit OFFSET :offset",
         {**params, "limit": page.page_size, "offset": page.offset},
     ).fetchall()
-    return rows, total
+    return rows, int(total), int(total_amount_cents)
 
 
 def iter_payments(merchant_id: str, conn: sqlite3.Connection, f: PaymentFilters) -> sqlite3.Cursor:
