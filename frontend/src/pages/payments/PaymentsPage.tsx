@@ -1,8 +1,11 @@
+import { Link } from "react-router-dom";
 import type { Meta } from "../../api/types";
 import { useApi } from "../../api/useApi";
 import { Tabs } from "../../components/Tabs";
 import { ErrorState, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
+import { IconChevronLeft } from "../../layout/icons";
+import { backToHealthHref } from "../../lib/healthScope";
 import { useQueryState } from "../../lib/query";
 import { AttemptsTab } from "./AttemptsTab";
 import { PaymentsTab } from "./PaymentsTab";
@@ -16,15 +19,29 @@ export function PaymentsPage() {
   const query = useQueryState();
   const meta = useApi<Meta>("/api/meta");
   const tab = query.get("tab", "payments") === "attempts" ? "attempts" : "payments";
+  // Present only when the list was opened from Payment Health. The `ph_` keys it reads are never cleared by the
+  // filter, sort, tab or page patches below (query.set merges), so the link survives narrowing the list further.
+  const back = backToHealthHref(query);
 
   return (
     <>
-      <PageHeader title="Payments" subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago." />
+      <PageHeader
+        above={
+          back ? (
+            <Link to={back}>
+              <IconChevronLeft />
+              Back to Payment Health
+            </Link>
+          ) : undefined
+        }
+        title="Payments"
+        subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago."
+      />
       <Tabs
         tabs={TABS}
         active={tab}
         label="Payments views"
-        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, sort: null, dir: null })}
+        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, failure_code: null, sort: null, dir: null })}
       />
       {meta.loading && !meta.data ? <LoadingState rows={4} /> : null}
       {meta.error ? <ErrorState error={meta.error} onRetry={meta.reload} /> : null}

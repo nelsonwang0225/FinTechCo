@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
+import { chicagoDate, daysUntil, formatCents, formatPointsBp, formatRateBp, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
@@ -19,6 +19,24 @@ describe("parseDollarsToCents", () => {
     expect(parseDollarsToCents("")).toBeNull();
     expect(parseDollarsToCents("1.234")).toBeNull();
     expect(parseDollarsToCents("abc")).toBeNull();
+  });
+});
+
+describe("rates in basis points", () => {
+  it("renders a rate with one decimal, rounded half-up, in integer arithmetic", () => {
+    expect(formatRateBp(5579)).toBe("55.8%");
+    expect(formatRateBp(7204)).toBe("72.0%");
+    expect(formatRateBp(10000)).toBe("100.0%");
+    expect(formatRateBp(4)).toBe("0.0%");
+    expect(formatRateBp(5)).toBe("0.1%");
+    expect(formatRateBp(0)).toBe("0.0%");
+  });
+  it("renders a difference as signed percentage points with a true minus sign", () => {
+    expect(formatPointsBp(-1875)).toBe("−18.8 pts");
+    expect(formatPointsBp(106)).toBe("+1.1 pts");
+    expect(formatPointsBp(0)).toBe("0.0 pts");
+    expect(formatPointsBp(-4)).toBe("0.0 pts");
+    expect(formatPointsBp(3515)).toBe("+35.2 pts");
   });
 });
 

@@ -91,4 +91,76 @@ describe("PaymentsPage", () => {
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
+
+  describe("opened from Payment Health", () => {
+    const backLink = (el: HTMLElement) => Array.from(el.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health")) ?? null;
+    const noScopeKeys = (url: string) => Array.from(new URLSearchParams(url.slice(url.indexOf("?"))).keys()).filter((k) => k.startsWith("ph_"));
+
+    it("links back to the original custom scope, keeps ph_ keys out of the API and survives a filter change", async () => {
+      const { calls } = mockFetch(handler);
+      page = await renderPage(
+        <PaymentsPage />,
+        "/payments?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app&status=failed&ph_period=custom&ph_from=2026-10-01&ph_to=2026-10-02&ph_channel=mobile_app",
+      );
+      await flush();
+      const el = page.container;
+      expect(backLink(el)?.getAttribute("href")).toBe("/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app");
+      const listCall = calls.find((c) => c.url.startsWith("/api/payments?"));
+      expect(listCall?.url).toContain("period=custom&from=2026-10-01&to=2026-10-02");
+      expect(listCall?.url).toContain("status=failed");
+      expect(listCall?.url).toContain("channel=mobile_app");
+      expect(noScopeKeys(listCall?.url ?? "")).toEqual([]);
+      expect(noScopeKeys(el.querySelector("a[data-export=payments]")?.getAttribute("href") ?? "")).toEqual([]);
+
+      await setValue(el.querySelector("#payments-status"), "succeeded");
+      await flush();
+      const last = calls.filter((c) => c.url.startsWith("/api/payments?")).at(-1);
+      expect(last?.url).toContain("status=succeeded");
+      expect(noScopeKeys(last?.url ?? "")).toEqual([]);
+      expect(backLink(el)?.getAttribute("href")).toBe("/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app");
+    });
+
+    it("links back to a preset scope with no channel", async () => {
+      mockFetch(handler);
+      page = await renderPage(<PaymentsPage />, "/payments?period=last_7_days&status=failed&ph_period=last_7_days");
+      await flush();
+      expect(backLink(page.container)?.getAttribute("href")).toBe("/payment-health?period=last_7_days");
+    });
+
+    it("shows no back link without the ph_ keys", async () => {
+      mockFetch(handler);
+      page = await renderPage(<PaymentsPage />, "/payments?period=last_7_days&status=failed");
+      await flush();
+      expect(backLink(page.container)).toBeNull();
+    });
+
+    it("filters the attempts tab by outcome and recorded signal, with the chip, the export and the back link", async () => {
+      const { calls } = mockFetch(handler);
+      page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&period=last_7_days&outcome=failed&failure_code=issuer_unavailable&ph_period=last_7_days");
+      await flush();
+      const el = page.container;
+      const listCall = calls.find((c) => c.url.startsWith("/api/attempts?"));
+      expect(listCall?.url).toContain("outcome=failed");
+      expect(listCall?.url).toContain("failure_code=issuer_unavailable");
+      expect(noScopeKeys(listCall?.url ?? "")).toEqual([]);
+      expect(el.textContent).toContain("Signal: Issuer unavailable");
+      expect((el.querySelector("#attempts-failure-code") as HTMLSelectElement | null)?.value).toBe("issuer_unavailable");
+      const exportHref = el.querySelector("a[data-export=attempts]")?.getAttribute("href") ?? "";
+      expect(exportHref).toContain("failure_code=issuer_unavailable");
+      expect(noScopeKeys(exportHref)).toEqual([]);
+      expect(backLink(el)?.getAttribute("href")).toBe("/payment-health?period=last_7_days");
+    });
+
+    it("puts a chosen signal in the URL and the request without forcing an outcome", async () => {
+      const { calls } = mockFetch(handler);
+      page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
+      await flush();
+      await setValue(page.container.querySelector("#attempts-failure-code"), "do_not_honor");
+      await flush();
+      const last = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+      expect(last?.url).toContain("failure_code=do_not_honor");
+      expect(last?.url).not.toContain("outcome=");
+      expect(page.container.textContent).toContain("Signal: Do not honor");
+    });
+  });
 });

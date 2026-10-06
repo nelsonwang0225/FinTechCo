@@ -29,6 +29,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
     sort,
@@ -45,6 +46,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
     if (query.get("q")) out.push({ key: "q", label: `Search: ${query.get("q")}`, onRemove: () => query.set({ q: null }) });
     if (query.get("outcome")) out.push({ key: "outcome", label: `Outcome: ${label(meta.attempt_outcomes, query.get("outcome"))}`, onRemove: () => query.set({ outcome: null }) });
+    if (query.get("failure_code")) out.push({ key: "failure_code", label: `Signal: ${label(meta.failure_codes, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
     if (query.get("channel")) out.push({ key: "channel", label: `Channel: ${label(meta.channels, query.get("channel"))}`, onRemove: () => query.set({ channel: null }) });
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
@@ -85,6 +87,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <FilterSearch id="attempts-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
+        {/* A recorded signal narrows by failure code alone; it does not force the outcome, the API ANDs the two. */}
+        <FilterSelect id="attempts-failure-code" label="Recorded signal" value={query.get("failure_code")} options={meta.failure_codes} onChange={(v) => query.set({ failure_code: v })} />
         <FilterSelect
           id="attempts-channel"
           label="Channel"
@@ -102,7 +106,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, failure_code: null, channel: null, location_id: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (
