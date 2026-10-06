@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
+import { chicagoDate, daysUntil, formatCents, formatPoints, formatRate, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
@@ -48,5 +48,20 @@ describe("timestamps are rendered in America/Chicago", () => {
     expect(greetingFor("2026-10-05T14:12:00Z")).toBe("Good morning");
     expect(greetingFor("2026-10-05T20:12:00Z")).toBe("Good afternoon");
     expect(greetingFor("2026-10-06T01:12:00Z")).toBe("Good evening");
+  });
+});
+
+describe("rates", () => {
+  it("formats basis points as one-decimal percentages and signed points without floats", () => {
+    expect(formatRate(7204)).toBe("72.0%");
+    expect(formatRate(9079)).toBe("90.8%");
+    expect(formatRate(10000)).toBe("100.0%");
+    expect(formatRate(0)).toBe("0.0%");
+    expect(formatRate(null)).toBe("—");
+    expect(formatPoints(-1875)).toBe("−18.8 pts");
+    expect(formatPoints(107)).toBe("+1.1 pts");
+    expect(formatPoints(-4)).toBe("0.0 pts");
+    expect(formatPoints(null)).toBe("—");
+    expect(formatPoints(1000, { signed: false })).toBe("10.0 pts");
   });
 });

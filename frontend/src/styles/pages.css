@@ -630,3 +630,38 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Payment health */
+.health-loading {
+  opacity: 0.7;
+}
+.health-summary {
+  margin-bottom: var(--space-5);
+  border-left: 4px solid var(--color-border-strong);
+}
+.health-summary-degraded {
+  border-left-color: var(--color-danger);
+}
+.health-summary-no_degradation {
+  border-left-color: var(--color-success);
+}
+.health-summary-message {
+  margin: 0;
+  color: var(--color-ink-secondary);
+}
+.health-degraded-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.health-degraded-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.health-section {
+  margin-bottom: var(--space-5);
+}
