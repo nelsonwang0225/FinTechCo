@@ -179,6 +179,12 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/** A rate in integer basis points as a percentage with one decimal, rounded half-up: 5579 -> "55.8%". */
+export function formatRateBp(bp: number): string {
+  const tenths = Math.floor((Math.trunc(bp) + 5) / 10);
+  return `${Math.floor(tenths / 10)}.${tenths % 10}%`;
+}
+
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
 export function nowMs(): number {
   return Date.now();

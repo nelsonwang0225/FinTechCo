@@ -9,6 +9,7 @@ import { DisputeDetailPage } from "./pages/dispute-detail/DisputeDetailPage";
 import { DisputesPage } from "./pages/disputes/DisputesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OverviewPage } from "./pages/overview/OverviewPage";
+import { PaymentHealthPage } from "./pages/payment-health/PaymentHealthPage";
 import { PaymentDetailPage } from "./pages/payment-detail/PaymentDetailPage";
 import { PaymentsPage } from "./pages/payments/PaymentsPage";
 import { PayoutDetailPage } from "./pages/payout-detail/PayoutDetailPage";
@@ -73,6 +74,14 @@ function ProductApp(_: { session: Session }) {
           element={
             <RequirePermission permission="payments:read">
               <PaymentDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/payment-health"
+          element={
+            <RequirePermission permission="payments:read">
+              <PaymentHealthPage />
             </RequirePermission>
           }
         />

@@ -31,6 +31,10 @@ Authoritative DDL: `backend/app/db/schema.sql`. This page explains the rules the
 
 - **Payment status** comes from the `payment_summary` view: a succeeded attempt exists → `refunded` if succeeded refunds equal the amount, `partially_refunded` if they are positive, otherwise `succeeded`; no succeeded attempt and the latest attempt is pending → `pending`; otherwise `failed`. Pending refunds do not change status. The view also exposes the method to display (succeeded attempt's, else latest), the payout containing the charge, the dispute, and the customer and location names. Every reader selects from it.
 - **Timelines** (payment detail, dispute case history), **customer activity**, **payout itemisation**, **funds available**, the **next payout** and every **Overview total** are computed from the rows they summarise at read time.
+- **Payment Health** (`GET /api/payment-health`) is computed per request for a period and optional channel:
+  - Attempt success rate = succeeded / (succeeded + failed) over attempts whose `created_at` falls in the period, in integer basis points rounded half-up. Pending attempts are excluded and reported. With no completed attempt there is no rate, and below 30 completed attempts the rate is flagged as low volume.
+  - Recorded failure signals group failed attempts by `failure_code`. They are what was recorded on the attempt, not a confirmed cause.
+  - Recovery is counted once per payment created in the period (`payment.created_at`) that has at least one failed attempt: *recovered* when a succeeded attempt exists (whenever it happened, refunds aside), *attempt pending* when there is no success and the latest attempt is pending, otherwise *unresolved*. Recovered within 1 hour means the success completed no more than an hour after the first attempt was created. Value is `payment.amount_cents`, once per payment. Unresolved payments are exactly the payments whose status is `failed`.
 - The one stored derived number, `payout.amount_cents`, is verified against its movements at seed time, in tests, and on every detail read.
 
 ## Ledger

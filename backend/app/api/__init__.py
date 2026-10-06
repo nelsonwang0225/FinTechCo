@@ -11,7 +11,7 @@ def register_routers(app: FastAPI) -> None:
     # Imported lazily so the app factory can be created before every router exists.
     import importlib
 
-    modules = ["session", "meta", "overview", "payments", "attempts", "payouts", "customers", "disputes", "reports", "settings"]
+    modules = ["session", "meta", "overview", "payments", "attempts", "payment_health", "payouts", "customers", "disputes", "reports", "settings"]
     if config.is_development():
         modules.insert(0, "dev")
     for name in modules:
