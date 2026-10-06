@@ -89,6 +89,8 @@ ATTEMPT_CASES = [
     ("maya", "period=last_30_days&outcome=failed"),
     ("maya", "period=last_7_days&outcome=succeeded&channel=website"),
     ("maya", "period=last_30_days&channel=mobile_app"),
+    ("maya", "period=last_30_days&failure_code=issuer_unavailable"),
+    ("maya", "from=2026-10-01&to=2026-10-02&channel=mobile_app&outcome=failed&failure_code=do_not_honor"),
     ("priya", "period=last_30_days&outcome=pending"),
     ("jordan", "period=last_30_days&q=AL-11404"),
 ]
@@ -107,12 +109,20 @@ def test_attempt_export_honours_filters_and_scope(client_as, ids: Ids, persona: 
             assert row["outcome"] == params["outcome"]
         if "channel" in params:
             assert row["channel"] == params["channel"]
+        if "failure_code" in params:
+            assert row["failure_code"] == params["failure_code"] and row["outcome"] == "failed"
         if row["outcome"] == "failed":
             assert row["failure_code"] and row["failure_message"]
         else:
             assert row["failure_code"] == "" and row["failure_message"] == ""
         assert row["method_label"] and row["card_last4"].isdigit() and len(row["card_last4"]) == 4
         assert row["amount_usd"] == format_usd(int(row["amount_cents"]))
+
+
+def test_attempt_export_rejects_an_unknown_failure_code(client_as) -> None:
+    assert client_as("maya").get("/api/reports/attempts.csv?period=last_7_days&failure_code=bogus").status_code == 422
+    rows = rows_of(client_as("maya").get("/api/reports/attempts.csv?period=last_7_days&failure_code=lost_or_stolen"))
+    assert all(r["failure_code"] == "lost_or_stolen" for r in rows)
 
 
 def test_payout_reconciliation_export(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:

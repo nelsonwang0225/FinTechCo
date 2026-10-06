@@ -6,6 +6,7 @@ import sqlite3
 
 import pytest
 
+from app.core.labels import FAILURE_CODE_LABELS
 from tests.conftest import Ids, assert_scoped
 
 LAST_30 = "period=last_30_days"
@@ -65,6 +66,34 @@ def test_period_filters_on_the_attempt_timestamp(client_as, seeded_conn: sqlite3
     anchor_attempts = [i for i in body["items"] if i["order_reference"] == "AL-11404"]
     assert [a["attempt_number"] for a in anchor_attempts] == [1, 2]
     assert anchor_attempts[0]["failure_message"] == "Insufficient funds"
+
+
+@pytest.mark.parametrize("code", ["issuer_unavailable", "insufficient_funds", "incorrect_number"])
+def test_failure_code_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.failure_code = :f", {"f": code})
+    assert body["total"] > 0 and len(body["items"]) == min(body["total"], 100)
+    for item in body["items"]:
+        assert item["failure_code"] == code and item["outcome"] == "failed"
+        assert item["failure_message"] == FAILURE_CODE_LABELS[code]
+    with_outcome = client_as("maya").get(f"/api/attempts?{LAST_30}&outcome=failed&failure_code={code}&page_size=1").json()
+    assert with_outcome["total"] == body["total"]
+    scoped = client_as("maya").get(f"/api/attempts?from=2026-10-01&to=2026-10-02&channel=mobile_app&failure_code={code}&page_size=1").json()
+    assert scoped["total"] == seeded_conn.execute(
+        "SELECT COUNT(*) FROM payment_attempt a JOIN payment p ON p.id = a.payment_id WHERE a.merchant_id = ? AND p.channel = 'mobile_app' "
+        "AND a.failure_code = ? AND a.created_at >= '2026-10-01T05:00:00Z' AND a.created_at < '2026-10-03T05:00:00Z'",
+        (ids.merchant("alder-loom"), code),
+    ).fetchone()[0]
+
+
+def test_failure_code_values_are_the_recorded_signals(client_as) -> None:
+    from typing import get_args
+
+    from app.api.attempts import FailureCode
+
+    assert list(get_args(FailureCode)) == list(FAILURE_CODE_LABELS)
+    assert client_as("maya").get("/api/attempts?failure_code=declined").status_code == 422
+    assert client_as("maya").get("/api/attempts?failure_code=").status_code == 422
 
 
 def test_search_and_sort(client_as) -> None:
