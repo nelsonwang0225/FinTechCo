@@ -121,51 +121,75 @@ IN_STORE = ChannelVerdict("in_store", "In store", "normal", Outcomes(119, 18), O
 
 
 def test_degraded_copy_names_each_degraded_channel_with_its_worst_day() -> None:
-    headline, detail = health.attention_text(
-        "degraded", [WEBSITE, MOBILE, IN_STORE], scope_period=Outcomes(), scope_baseline=Outcomes(), baseline_from=date(2026, 8, 30), baseline_to=date(2026, 9, 28), history_starts=date(2026, 9, 5)
-    )
-    assert headline == "Attention needed: Mobile app payment performance degraded"
+    headline, detail = health.attention_text("degraded", [WEBSITE, MOBILE, IN_STORE], baseline_from=date(2026, 8, 30), baseline_to=date(2026, 9, 28), history_starts=date(2026, 9, 5))
+    assert headline == "Attention needed: Mobile payment performance degraded"
     assert detail == "Mobile app: 72.0% of completed attempts succeeded vs 90.8% in the baseline (18.8 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts."
     two = ChannelVerdict("website", "Website", "degraded", Outcomes(70, 30), Outcomes(900, 100))
-    assert health.degraded_headline(["Website", "Mobile app"]) == "Attention needed: Website and Mobile app payment performance degraded"
+    assert health.degraded_headline(["website", "mobile_app"]) == "Attention needed: Website and Mobile payment performance degraded"
+    assert health.degraded_headline(["in_store"]) == "Attention needed: In-store payment performance degraded"
     assert health.degraded_detail([two, MOBILE]) == (
         "Website: 70.0% of completed attempts succeeded vs 90.0% in the baseline (20.0 pts lower). "
         "Mobile app: 72.0% of completed attempts succeeded vs 90.8% in the baseline (18.8 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts."
     )
 
 
-def test_normal_copy_lists_only_channels_with_a_normal_verdict() -> None:
-    headline, detail = health.attention_text(
-        "normal", [WEBSITE, ChannelVerdict("mobile_app", "Mobile app", "insufficient_volume", Outcomes(5, 2), Outcomes(90, 9)), IN_STORE],
-        scope_period=Outcomes(), scope_baseline=Outcomes(), baseline_from=date(2026, 8, 30), baseline_to=date(2026, 9, 28), history_starts=date(2026, 9, 5),
-    )
+THIN_MOBILE = ChannelVerdict("mobile_app", "Mobile app", "insufficient_volume", Outcomes(5, 2), Outcomes(90, 9))
+UNBASED_MOBILE = ChannelVerdict("mobile_app", "Mobile app", "no_baseline", Outcomes(600, 132), Outcomes(50, 6))
+
+
+def test_normal_copy_lists_normal_channels_and_names_the_ones_not_evaluated() -> None:
+    headline, detail = health.attention_text("normal", [WEBSITE, THIN_MOBILE, IN_STORE], baseline_from=date(2026, 8, 30), baseline_to=date(2026, 9, 28), history_starts=date(2026, 9, 5))
     assert headline == "No significant degradation detected for the selected scope"
     assert detail == (
-        "Completed-attempt success is within 10.0 pts of the baseline for every channel with enough volume: Website 92.5% vs 91.4%, In store 86.9% vs 91.7%. "
+        "Completed-attempt success is within 10.0 pts of the baseline for every channel that could be evaluated: Website 92.5% vs 91.4%, In store 86.9% vs 91.7%. "
+        "Mobile app has too few completed attempts to evaluate. Individual payments can still fail; the unresolved list shows which."
+    )
+    assert health.normal_detail([IN_STORE]) == (
+        "Completed-attempt success is within 10.0 pts of the baseline for every channel that could be evaluated: In store 86.9% vs 91.7%. "
         "Individual payments can still fail; the unresolved list shows which."
     )
-    assert health.normal_detail([IN_STORE]).split(": ")[1].startswith("In store 86.9% vs 91.7%. ")
-
-
-def test_insufficient_volume_copy_quotes_the_scope_counts_and_the_minimums() -> None:
-    headline, detail = health.attention_text(
-        "insufficient_volume", [], scope_period=Outcomes(3, 2), scope_baseline=Outcomes(111, 12), baseline_from=date(2026, 8, 28), baseline_to=date(2026, 9, 26), history_starts=date(2026, 9, 5)
+    thin_store = ChannelVerdict("in_store", "In store", "insufficient_volume", Outcomes(9, 1), Outcomes(80, 8))
+    assert health.normal_detail([WEBSITE, UNBASED_MOBILE, thin_store]).split(": ")[1] == (
+        "Website 92.5% vs 91.4%. Mobile app has no baseline yet. In store has too few completed attempts to evaluate. "
+        "Individual payments can still fail; the unresolved list shows which."
     )
+    assert health.not_evaluated_clause([UNBASED_MOBILE, ChannelVerdict("in_store", "In store", "no_baseline", Outcomes(40, 2), Outcomes(20, 1))]) == "Mobile app and In store have no baseline yet."
+
+
+def test_insufficient_volume_copy_quotes_the_counts_the_rule_compared() -> None:
+    one = ChannelVerdict("mobile_app", "Mobile app", "insufficient_volume", Outcomes(3, 2), Outcomes(111, 12))
+    headline, detail = health.attention_text("insufficient_volume", [one], baseline_from=date(2026, 8, 28), baseline_to=date(2026, 9, 26), history_starts=date(2026, 9, 5))
     assert headline == "Insufficient volume to evaluate payment health"
     assert detail == "5 completed attempts in the period (30 needed) and 123 in the baseline (100 needed). Counts are shown without a verdict."
+    # All channels: each channel's own counts, never the pooled sum, which could clear a minimum no channel clears.
+    thin = [
+        ChannelVerdict("website", "Website", "insufficient_volume", Outcomes(10, 2), Outcomes(40, 5)),
+        ChannelVerdict("mobile_app", "Mobile app", "insufficient_volume", Outcomes(11, 1), Outcomes(38, 4)),
+        ChannelVerdict("in_store", "In store", "insufficient_volume", Outcomes(9, 0), Outcomes(30, 3)),
+    ]
+    assert sum(v.period.completed for v in thin) >= 30 and sum(v.baseline.completed for v in thin) >= 100
+    _, detail = health.attention_text("insufficient_volume", thin, baseline_from=date(2026, 8, 28), baseline_to=date(2026, 9, 26), history_starts=date(2026, 9, 5))
+    assert detail == (
+        "Completed attempts per channel, period / baseline: Website 12 / 45, Mobile app 12 / 42, In store 9 / 33. "
+        "A verdict needs 30 in the period and 100 in the baseline. Counts are shown without a verdict."
+    )
 
 
 def test_no_baseline_copy_names_where_history_starts() -> None:
-    headline, detail = health.attention_text(
-        "no_baseline", [], scope_period=Outcomes(2327, 263), scope_baseline=Outcomes(75, 9), baseline_from=date(2026, 8, 7), baseline_to=date(2026, 9, 5), history_starts=date(2026, 9, 5)
-    )
+    one = ChannelVerdict("website", "Website", "no_baseline", Outcomes(2327, 263), Outcomes(75, 9))
+    headline, detail = health.attention_text("no_baseline", [one], baseline_from=date(2026, 8, 7), baseline_to=date(2026, 9, 5), history_starts=date(2026, 9, 5))
     assert headline == "No baseline yet: payment history starts Sep 5, 2026"
     assert detail == (
         "The baseline would be Aug 7 – Sep 5, 2026, but recorded history begins Sep 5, 2026, leaving 84 completed attempts to compare against (100 needed). "
         "Period figures are shown without a verdict."
     )
-    headline, detail = health.attention_text(
-        "no_baseline", [], scope_period=Outcomes(), scope_baseline=Outcomes(), baseline_from=date(2026, 8, 7), baseline_to=date(2026, 9, 5), history_starts=None
+    three = [one, UNBASED_MOBILE, ChannelVerdict("in_store", "In store", "no_baseline", Outcomes(40, 2), Outcomes(20, 1))]
+    assert sum(v.baseline.completed for v in three) >= 100, "the pooled baseline would pass the minimum; the text must not say so"
+    _, detail = health.attention_text("no_baseline", three, baseline_from=date(2026, 8, 7), baseline_to=date(2026, 9, 5), history_starts=date(2026, 9, 5))
+    assert detail == (
+        "The baseline would be Aug 7 – Sep 5, 2026, but recorded history begins Sep 5, 2026, leaving Website 84, Mobile app 56 and In store 21 completed attempts "
+        "to compare against (100 needed per channel). Period figures are shown without a verdict."
     )
+    headline, detail = health.attention_text("no_baseline", [], baseline_from=date(2026, 8, 7), baseline_to=date(2026, 9, 5), history_starts=None)
     assert headline == "No baseline yet: no recorded payment attempts"
     assert detail == "The baseline would be Aug 7 – Sep 5, 2026, but this business has no recorded payment attempts yet. Period figures are shown without a verdict."

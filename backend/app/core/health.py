@@ -143,7 +143,11 @@ def aggregate_status(statuses: Sequence[ChannelStatus]) -> ChannelStatus:
 
 
 def format_rate_bp(bp: int) -> str:
-    """A rate in basis points as a percentage with one decimal, half-up: 7204 -> '72.0%', 5579 -> '55.8%'."""
+    """A rate in basis points as a percentage with one decimal, half-up: 7204 -> '72.0%', 5579 -> '55.8%'.
+
+    The displayed rate is the basis-point value rounded to tenths, the same rule as lib/format.ts on the frontend, so
+    every surface quotes the API's integer rather than re-deriving it from counts.
+    """
     whole, tenth = divmod((bp + 5) // 10, 10)
     return f"{whole}.{tenth}%"
 
@@ -180,8 +184,32 @@ class ChannelVerdict:
     worst_day: DayOutcomes | None = None
 
 
-def degraded_headline(labels: Sequence[str]) -> str:
-    return f"Attention needed: {' and '.join(labels)} payment performance degraded"
+# The headline names a channel the way a person says it ("Mobile payment performance"); tables keep the product
+# labels from core/labels.py.
+HEADLINE_LABELS: dict[str, str] = {"website": "Website", "mobile_app": "Mobile", "in_store": "In-store"}
+
+
+def degraded_headline(channels: Sequence[str]) -> str:
+    return f"Attention needed: {' and '.join(HEADLINE_LABELS[c] for c in channels)} payment performance degraded"
+
+
+def _join(parts: Sequence[str]) -> str:
+    """'A', 'A and B', 'A, B and C'."""
+    if len(parts) <= 1:
+        return "".join(parts)
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
+def not_evaluated_clause(verdicts: Sequence[ChannelVerdict]) -> str:
+    """Why the channels without a verdict were skipped, so a 'normal' scope never hides an unevaluated channel."""
+    sentences: list[str] = []
+    no_baseline = [v.label for v in verdicts if v.status == "no_baseline"]
+    thin = [v.label for v in verdicts if v.status == "insufficient_volume"]
+    if no_baseline:
+        sentences.append(f"{_join(no_baseline)} {'has' if len(no_baseline) == 1 else 'have'} no baseline yet.")
+    if thin:
+        sentences.append(f"{_join(thin)} {'has' if len(thin) == 1 else 'have'} too few completed attempts to evaluate.")
+    return " ".join(sentences)
 
 
 def degraded_detail(verdicts: Sequence[ChannelVerdict]) -> str:
@@ -205,7 +233,7 @@ NORMAL_HEADLINE = "No significant degradation detected for the selected scope"
 
 
 def normal_detail(verdicts: Sequence[ChannelVerdict]) -> str:
-    """Every channel with a verdict of normal, period rate vs baseline rate."""
+    """Every channel with a verdict of normal, period rate vs baseline rate, then the channels that were not evaluated."""
     parts: list[str] = []
     for v in verdicts:
         if v.status != "normal":
@@ -213,19 +241,31 @@ def normal_detail(verdicts: Sequence[ChannelVerdict]) -> str:
         period_rate, baseline_rate = v.period.success_rate_bp, v.baseline.success_rate_bp
         assert period_rate is not None and baseline_rate is not None
         parts.append(f"{v.label} {format_rate_bp(period_rate)} vs {format_rate_bp(baseline_rate)}")
+    skipped = not_evaluated_clause(verdicts)
     return (
-        f"Completed-attempt success is within {format_points_bp(DEGRADED_DROP_BP)} of the baseline for every channel with enough volume: "
-        f"{', '.join(parts)}. Individual payments can still fail; the unresolved list shows which."
+        f"Completed-attempt success is within {format_points_bp(DEGRADED_DROP_BP)} of the baseline for every channel that could be evaluated: "
+        f"{', '.join(parts)}. {skipped + ' ' if skipped else ''}Individual payments can still fail; the unresolved list shows which."
     )
 
 
 INSUFFICIENT_VOLUME_HEADLINE = "Insufficient volume to evaluate payment health"
 
 
-def insufficient_volume_detail(period: Outcomes, baseline: Outcomes) -> str:
+def insufficient_volume_detail(verdicts: Sequence[ChannelVerdict]) -> str:
+    """The counts the rule compared against the minimums: one channel's, or each channel's when the scope is all channels.
+
+    The all-channels text never quotes pooled totals, because the pooled sum can clear a minimum no single channel clears.
+    """
+    if len(verdicts) == 1:
+        v = verdicts[0]
+        return (
+            f"{v.period.completed} completed attempts in the period ({MIN_PERIOD_COMPLETED} needed) and {v.baseline.completed} in the baseline "
+            f"({MIN_BASELINE_COMPLETED} needed). Counts are shown without a verdict."
+        )
+    per_channel = ", ".join(f"{v.label} {v.period.completed} / {v.baseline.completed}" for v in verdicts)
     return (
-        f"{period.completed} completed attempts in the period ({MIN_PERIOD_COMPLETED} needed) and {baseline.completed} in the baseline "
-        f"({MIN_BASELINE_COMPLETED} needed). Counts are shown without a verdict."
+        f"Completed attempts per channel, period / baseline: {per_channel}. A verdict needs {MIN_PERIOD_COMPLETED} in the period and "
+        f"{MIN_BASELINE_COMPLETED} in the baseline. Counts are shown without a verdict."
     )
 
 
@@ -235,13 +275,18 @@ def no_baseline_headline(history_starts: date | None) -> str:
     return f"No baseline yet: payment history starts {day_label(history_starts, with_year=True)}"
 
 
-def no_baseline_detail(baseline_from: date, baseline_to: date, history_starts: date | None, baseline: Outcomes) -> str:
+def no_baseline_detail(baseline_from: date, baseline_to: date, history_starts: date | None, verdicts: Sequence[ChannelVerdict]) -> str:
+    """Where the baseline would be, where history begins, and what each evaluated channel is left with to compare against."""
     window = date_range_label(baseline_from, baseline_to)
     if history_starts is None:
         return f"The baseline would be {window}, but this business has no recorded payment attempts yet. Period figures are shown without a verdict."
+    if len(verdicts) == 1:
+        left = f"{verdicts[0].baseline.completed} completed attempts to compare against ({MIN_BASELINE_COMPLETED} needed)"
+    else:
+        left = f"{_join([f'{v.label} {v.baseline.completed}' for v in verdicts])} completed attempts to compare against ({MIN_BASELINE_COMPLETED} needed per channel)"
     return (
-        f"The baseline would be {window}, but recorded history begins {day_label(history_starts, with_year=True)}, leaving {baseline.completed} completed "
-        f"attempts to compare against ({MIN_BASELINE_COMPLETED} needed). Period figures are shown without a verdict."
+        f"The baseline would be {window}, but recorded history begins {day_label(history_starts, with_year=True)}, leaving {left}. "
+        f"Period figures are shown without a verdict."
     )
 
 
@@ -249,17 +294,15 @@ def attention_text(
     status: ChannelStatus,
     verdicts: Sequence[ChannelVerdict],
     *,
-    scope_period: Outcomes,
-    scope_baseline: Outcomes,
     baseline_from: date,
     baseline_to: date,
     history_starts: date | None,
 ) -> tuple[str, str]:
-    """(headline, detail) for the selected scope. `verdicts` are the channels the scope evaluates."""
+    """(headline, detail) for the selected scope. `verdicts` are the channels the scope evaluates: one, or every channel."""
     if status == "degraded":
-        return degraded_headline([v.label for v in verdicts if v.status == "degraded"]), degraded_detail(verdicts)
+        return degraded_headline([v.channel for v in verdicts if v.status == "degraded"]), degraded_detail(verdicts)
     if status == "normal":
         return NORMAL_HEADLINE, normal_detail(verdicts)
     if status == "no_baseline":
-        return no_baseline_headline(history_starts), no_baseline_detail(baseline_from, baseline_to, history_starts, scope_baseline)
-    return INSUFFICIENT_VOLUME_HEADLINE, insufficient_volume_detail(scope_period, scope_baseline)
+        return no_baseline_headline(history_starts), no_baseline_detail(baseline_from, baseline_to, history_starts, verdicts)
+    return INSUFFICIENT_VOLUME_HEADLINE, insufficient_volume_detail(verdicts)

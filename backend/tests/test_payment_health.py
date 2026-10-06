@@ -159,7 +159,7 @@ def test_oct_1_2_mobile_matches_sql_and_the_pinned_seed(client_as, seeded_conn: 
 
     assert body["attention"] == {
         "status": "degraded",
-        "headline": "Attention needed: Mobile app payment performance degraded",
+        "headline": "Attention needed: Mobile payment performance degraded",
         "detail": "Mobile app: 55.8% of completed attempts succeeded vs 90.9% in the baseline (35.1 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts.",
         "degraded_channels": ["mobile_app"],
     }
@@ -232,7 +232,7 @@ def test_last_7_days_all_channels(client_as, seeded_conn: sqlite3.Connection, id
 
     assert body["attention"] == {
         "status": "degraded",
-        "headline": "Attention needed: Mobile app payment performance degraded",
+        "headline": "Attention needed: Mobile payment performance degraded",
         "detail": "Mobile app: 72.0% of completed attempts succeeded vs 90.8% in the baseline (18.8 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts.",
         "degraded_channels": ["mobile_app"],
     }
@@ -285,8 +285,8 @@ def test_last_30_days_has_no_baseline_because_history_starts_inside_it(client_as
     assert body["attention"] == {
         "status": "no_baseline",
         "headline": "No baseline yet: payment history starts Sep 5, 2026",
-        "detail": "The baseline would be Aug 7 – Sep 5, 2026, but recorded history begins Sep 5, 2026, leaving 84 completed attempts to compare against (100 needed). "
-        "Period figures are shown without a verdict.",
+        "detail": "The baseline would be Aug 7 – Sep 5, 2026, but recorded history begins Sep 5, 2026, leaving Website 37, Mobile app 23 and In store 24 completed attempts "
+        "to compare against (100 needed per channel). Period figures are shown without a verdict.",
         "degraded_channels": [],
     }
     assert body["trend"]["baseline_rate_bp"] is None and len(body["trend"]["points"]) == 30
@@ -403,6 +403,18 @@ def test_copper_finch_mobile_on_a_quiet_sunday_has_insufficient_volume(client_as
     assert body["attention"]["detail"].endswith(" in the baseline (100 needed). Counts are shown without a verdict.")
     assert body["attention"]["degraded_channels"] == [] and body["trend"]["baseline_rate_bp"] is None
     assert body["trend"]["points"] == [{"day": "2026-09-27", "succeeded": 3, "failed": 2, "completed": 5, "success_rate_bp": 6000, "low_volume": True}]
+
+
+def test_juniper_all_channels_on_a_thin_scope_quotes_each_channel_never_the_pool(client_as) -> None:
+    body = get(client_as("priya"), "period=custom&from=2026-09-24&to=2026-09-25")
+    assert [c["status"] for c in body["channels"]] == ["insufficient_volume"] * 3
+    assert [(c["period"]["completed"], c["baseline"]["completed"]) for c in body["channels"]] == [(28, 240), (0, 0), (10, 111)]
+    assert (body["scope"]["period"]["completed"], body["scope"]["baseline"]["completed"]) == (38, 351), "the pooled counts clear both minimums; no channel does"
+    assert body["scope"]["status"] == "insufficient_volume" and body["attention"]["headline"] == "Insufficient volume to evaluate payment health"
+    assert body["attention"]["detail"] == (
+        "Completed attempts per channel, period / baseline: Website 28 / 240, Mobile app 0 / 0, In store 10 / 111. "
+        "A verdict needs 30 in the period and 100 in the baseline. Counts are shown without a verdict."
+    )
 
 
 def test_copper_finch_website_on_the_clock_day_has_pending_attempts_and_no_rate(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:

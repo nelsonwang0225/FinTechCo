@@ -57,12 +57,13 @@ frontend/
     dev/                      PersonaBar, PersonaChooser (development only, outside product chrome)
     layout/                   AppShell, SideNav, TopBar, PageHeader, DemoIndicator
     components/               DataTable, Pagination, FilterBar, ActiveFilters, Tabs, StatusBadge, Money,
-                              Timestamp, DescriptionList, BarChart, LineChart, InfoTip, Timeline, NoteComposer, states
+                              Timestamp, DescriptionList, BarChart, LineChart, chartSize, InfoTip, Timeline, NoteComposer, states
     pages/                    overview, payments, payment-detail, payment-health, payouts, payout-detail, customers,
                               customer-detail, disputes, dispute-detail, reports, settings
     lib/format.ts             the only place money and timestamps are formatted
     lib/query.ts              URL query-string state for filters, sort, page, tab
     lib/scopedQuery.ts        prefixed query-string state for several filter sets on one page
+    lib/healthScope.ts        Payment Health scope and the drill-down links that carry it back (ph_ query keys)
     styles/tokens.css, base.css, pages.css
     test/                     mockApi, fixtures, render helpers for page tests
 ```
@@ -128,7 +129,7 @@ Entities: Merchant, Location, User, Membership, Customer, Payment, PaymentAttemp
 
 | Permission | business_admin | operations_manager | finance_manager | read_only_analyst |
 |---|:-:|:-:|:-:|:-:|
-| `overview:read`, `payments:read` (list, Attempts tab, detail) | Y | Y | Y | Y |
+| `overview:read`, `payments:read` (list, Attempts tab, detail, Payment Health) | Y | Y | Y | Y |
 | `customers:read` | Y | Y | – | Y |
 | `disputes:read` | Y | Y | Y | Y |
 | `payouts:read` (list, detail) | Y | – | Y | Y |

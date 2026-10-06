@@ -13,7 +13,7 @@ import { StatusBadge, toneFor } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
-import { formatCount, formatDate, formatDateShort, formatPointsBp, formatRateBp, formatTimestampFull } from "../../lib/format";
+import { formatCount, formatDate, formatDateShort, formatPointsBp, formatRateBp, formatTimestampMinute } from "../../lib/format";
 import { failedAttemptsHref, scopeFromPeriod, unresolvedPaymentsHref, type HealthScope } from "../../lib/healthScope";
 import { useQueryState, type QueryState } from "../../lib/query";
 import { PeriodFilter, periodParams } from "../payments/PeriodFilter";
@@ -79,12 +79,14 @@ function HealthBody({ data, query, loading }: { data: PaymentHealth; query: Quer
   const scope = scopeFromPeriod(data.period, data.channel);
   const { period } = data.scope;
   const noCompleted = period.completed === 0;
-  const noFailed = !noCompleted && period.failed === 0;
+  // Attempts are bucketed by attempt time and the recovery cohort by payment time, so both have to be empty before the
+  // failure sections can go: a payment created at the end of the period whose only attempt failed after it still counts.
+  const noFailed = !noCompleted && period.failed === 0 && data.recovery.affected === 0;
 
   return (
     <div className={loading ? "health health-loading" : "health"} aria-busy={loading || undefined}>
       <p className="health-scope muted">
-        {data.channel_label} · {data.period.range_label} · As of {formatTimestampFull(data.as_of)}
+        {data.channel_label} · {data.period.range_label} · As of {formatTimestampMinute(data.as_of)}
       </p>
       {period.pending > 0 ? (
         <p className="health-pending" role="status">
@@ -97,8 +99,8 @@ function HealthBody({ data, query, loading }: { data: PaymentHealth; query: Quer
           title="No completed attempts in this period"
           body={
             period.pending > 0
-              ? `${formatCount(period.pending)} attempt${period.pending === 1 ? " is" : "s are"} still pending in ${data.channel_label.toLowerCase()} for ${data.period.range_label}; a rate needs at least one completed attempt.`
-              : `No payment attempts completed in ${data.channel_label.toLowerCase()} for ${data.period.range_label}. Try a wider period or another channel.`
+              ? `${data.channel_label}, ${data.period.range_label}: ${formatCount(period.pending)} attempt${period.pending === 1 ? " is" : "s are"} still pending and none has completed; a rate needs at least one completed attempt.`
+              : `${data.channel_label}, ${data.period.range_label}: no payment attempts completed. Try a wider period or another channel.`
           }
         />
       ) : (
@@ -136,8 +138,9 @@ function HealthBody({ data, query, loading }: { data: PaymentHealth; query: Quer
 function AttentionCard({ data, scope }: { data: PaymentHealth; scope: HealthScope }) {
   const { attention } = data;
   const tone = toneFor(attention.status);
-  // On the all-channels view the button lands on the first degraded channel's failures, not every channel's.
-  const reviewScope: HealthScope = data.channel === null && attention.degraded_channels.length > 0 ? { ...scope, channel: attention.degraded_channels[0] ?? null } : scope;
+  // On the all-channels view with one degraded channel the button lands on that channel's failures; with several it
+  // keeps every channel the headline names. Back always returns to the all-channels view the person left.
+  const reviewScope: HealthScope = data.channel === null && attention.degraded_channels.length === 1 ? { ...scope, channel: attention.degraded_channels[0] ?? null } : scope;
   return (
     <section className={`card health-attention health-attention-${tone}`} role="status" aria-labelledby="health-attention-heading">
       <div className="health-attention-body">
@@ -151,7 +154,7 @@ function AttentionCard({ data, scope }: { data: PaymentHealth; scope: HealthScop
       </div>
       {attention.status === "degraded" ? (
         <div className="health-attention-action">
-          <Link className="btn btn-primary" to={unresolvedPaymentsHref(reviewScope)}>
+          <Link className="btn btn-primary" to={unresolvedPaymentsHref(reviewScope, scope)}>
             Review unresolved payments
           </Link>
         </div>
@@ -167,6 +170,8 @@ function successRateFoot(data: PaymentHealth): string[] {
   const { rule } = data;
   if (status === "no_baseline") return ["No baseline yet"];
   if (status === "insufficient_volume") {
+    // All channels: the pooled counts can clear a minimum no single channel clears, so quote the rule, not the pool.
+    if (data.channel === null) return [`No channel has ${formatCount(rule.min_period_completed)} completed attempts in the period and ${formatCount(rule.min_baseline_completed)} in the baseline`];
     if (period.completed < rule.min_period_completed) return [`${formatCount(period.completed)} completed attempts; ${formatCount(rule.min_period_completed)} needed to evaluate`];
     return [`${formatCount(baseline.completed)} completed baseline attempts; ${formatCount(rule.min_baseline_completed)} needed to evaluate`];
   }
@@ -379,7 +384,8 @@ function RecoveryCard({ data }: { data: PaymentHealth }) {
       <h2 id="health-recovery-heading" className="section-title health-title-tip">
         Recovery after a failed attempt <InfoTip text={RECOVERED_DEFINITION} label="What does recovered mean?" />
       </h2>
-      <ol className="health-flow">
+      {/* role="list" keeps the list semantics that list-style: none drops in WebKit; the arrows between steps are CSS. */}
+      <ol className="health-flow" role="list">
         <FlowStep label="Affected payments" value={r.affected} />
         <FlowStep label="Recovered within 1 hour" value={r.recovered_within_window} detail={windowLabel} tone="normal" />
         {r.recovered_later > 0 ? <FlowStep label="Recovered after 1 hour" value={r.recovered_later} tone="normal" /> : null}

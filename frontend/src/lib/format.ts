@@ -100,6 +100,21 @@ export function formatTimestampFull(iso: string): string {
   return dateTimeFull.format(new Date(iso));
 }
 
+const dateTimeMinute = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIMEZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+/** A reporting instant to the minute with its zone, for an "As of" line: "Oct 5, 2026, 9:12 AM CDT". */
+export function formatTimestampMinute(iso: string): string {
+  return dateTimeMinute.format(new Date(iso));
+}
+
 export function formatTime(iso: string): string {
   return timeOnly.format(new Date(iso));
 }
@@ -179,7 +194,10 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-/** A rate in integer basis points as a percentage with one decimal, rounded half-up: 5579 -> "55.8%". */
+/**
+ * A rate in integer basis points as a percentage with one decimal, rounded half-up: 5579 -> "55.8%". The displayed
+ * rate is the API's basis-point value rounded to tenths, the same rule as core/health.py, never re-derived from counts.
+ */
 export function formatRateBp(bp: number): string {
   const tenths = Math.floor((Math.trunc(bp) + 5) / 10);
   return `${Math.floor(tenths / 10)}.${tenths % 10}%`;

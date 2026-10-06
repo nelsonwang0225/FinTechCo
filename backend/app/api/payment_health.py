@@ -149,9 +149,7 @@ def get_payment_health(
         scope_period, scope_baseline = buckets.period(None), buckets.baseline(None)
         scope = channel_health(None, health.ALL_CHANNELS_LABEL, health.aggregate_status([v.status for v in verdicts]), scope_period, scope_baseline, health.worst_day(buckets.daily(None)))
 
-    headline, detail = health.attention_text(
-        scope.status, evaluated, scope_period=scope_period, scope_baseline=scope_baseline, baseline_from=baseline_from, baseline_to=baseline_to, history_starts=history_starts
-    )
+    headline, detail = health.attention_text(scope.status, evaluated, baseline_from=baseline_from, baseline_to=baseline_to, history_starts=history_starts)
     attention = Attention(status=scope.status, headline=headline, detail=detail, degraded_channels=[v.channel for v in evaluated if v.status == "degraded"])
 
     trend = Trend(

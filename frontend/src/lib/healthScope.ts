@@ -43,9 +43,13 @@ export function paymentHealthHref(scope: HealthScope): string {
   return `/payment-health${queryString(scopeParams(scope))}`;
 }
 
-/** The existing Payments list filtered to failed payments: exactly the unresolved payments of the scope. */
-export function unresolvedPaymentsHref(scope: HealthScope): string {
-  return `/payments${queryString({ ...scopeParams(scope), status: "failed", ...scopeBackParams(scope) })}`;
+/**
+ * The existing Payments list filtered to failed payments: exactly the unresolved payments of `scope`. `backScope` is
+ * the Payment Health view the person left, when the list is narrower than it (the attention button on the
+ * all-channels view opens the degraded channel's payments, and Back must still return to all channels).
+ */
+export function unresolvedPaymentsHref(scope: HealthScope, backScope: HealthScope = scope): string {
+  return `/payments${queryString({ ...scopeParams(scope), status: "failed", ...scopeBackParams(backScope) })}`;
 }
 
 /** The existing Attempts tab filtered to failed attempts with one recorded failure code, in the same scope. */

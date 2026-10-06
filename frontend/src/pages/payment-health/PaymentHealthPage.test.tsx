@@ -82,7 +82,7 @@ const LAST_7: PaymentHealth = {
   baseline: { from_date: "2026-08-30", to_date: "2026-09-28", range_label: "Aug 30 – Sep 28, 2026", history_starts: "2026-09-05", partial: true },
   attention: {
     status: "degraded",
-    headline: "Attention needed: Mobile app payment performance degraded",
+    headline: "Attention needed: Mobile payment performance degraded",
     detail: "Mobile app: 72.0% of completed attempts succeeded vs 90.8% in the baseline (18.8 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts.",
     degraded_channels: ["mobile_app"],
   },
@@ -225,7 +225,7 @@ const OCT_MOBILE: PaymentHealth = {
   baseline: { from_date: "2026-09-01", to_date: "2026-09-30", range_label: "Sep 1 – Sep 30, 2026", history_starts: "2026-09-05", partial: true },
   attention: {
     status: "degraded",
-    headline: "Attention needed: Mobile app payment performance degraded",
+    headline: "Attention needed: Mobile payment performance degraded",
     detail: "Mobile app: 55.8% of completed attempts succeeded vs 90.9% in the baseline (35.1 pts lower). Worst day Oct 1: 44.6% of 56 completed attempts.",
     degraded_channels: ["mobile_app"],
   },
@@ -324,6 +324,24 @@ const INSUFFICIENT: PaymentHealth = {
   unresolved_payments: { total: 1, items: OCT_MOBILE.unresolved_payments.items.slice(0, 1) },
 };
 
+/** All channels over a thin two-day scope: the pooled counts clear both minimums while no single channel does. */
+const SEP_24_25 = { preset: "custom", label: "Custom range", from_date: "2026-09-24", to_date: "2026-09-25", range_label: "Sep 24 – Sep 25, 2026" };
+const INSUFFICIENT_ALL: PaymentHealth = {
+  ...INSUFFICIENT,
+  period: SEP_24_25,
+  channel: null,
+  channel_label: "All channels",
+  attention: {
+    status: "insufficient_volume",
+    headline: "Insufficient volume to evaluate payment health",
+    detail:
+      "Completed attempts per channel, period / baseline: Website 28 / 240, Mobile app 0 / 0, In store 10 / 111. A verdict needs 30 in the period and 100 in the baseline. Counts are shown without a verdict.",
+    degraded_channels: [],
+  },
+  scope: { ...INSUFFICIENT.scope, channel: null, channel_label: "All channels", period: outcomes(33, 5), baseline: outcomes(320, 31), drop_bp: 433 },
+  trend: { points: [day("2026-09-24", 15, 3), day("2026-09-25", 18, 2)], baseline_rate_bp: null },
+};
+
 /** Today only, a channel with two attempts still pending and nothing completed. */
 const OCT_5 = { preset: "custom", label: "Custom range", from_date: "2026-10-05", to_date: "2026-10-05", range_label: "Oct 5, 2026" };
 const NOTHING_COMPLETED: PaymentHealth = {
@@ -391,7 +409,7 @@ describe("PaymentHealthPage", () => {
     expect(calls.find((c) => c.url.startsWith("/api/payment-health"))?.url).toBe("/api/payment-health?period=last_7_days");
     expect(page.container.querySelector("h1")?.textContent).toBe("Payment Health");
     expect(text()).toContain("Understand payment performance and investigate degradation.");
-    expect(page.container.querySelector(".health-scope")?.textContent).toBe("All channels · Sep 29 – Oct 5, 2026 · As of Oct 5, 2026, 9:12:00 AM CDT");
+    expect(page.container.querySelector(".health-scope")?.textContent).toBe("All channels · Sep 29 – Oct 5, 2026 · As of Oct 5, 2026, 9:12 AM CDT");
     expect(page.container.querySelector(".health-pending")?.textContent).toBe("2 attempts are still pending; figures may change.");
     expect(page.container.querySelector<HTMLSelectElement>("#health-period-preset")?.value).toBe("last_7_days");
     expect(page.container.querySelector<HTMLSelectElement>("#health-channel")?.value).toBe("");
@@ -404,12 +422,21 @@ describe("PaymentHealthPage", () => {
     const card = page.container.querySelector(".health-attention");
     expect(card?.getAttribute("role")).toBe("status");
     expect(card?.classList.contains("health-attention-danger")).toBe(true);
-    expect(card?.querySelector("h2")?.textContent).toBe("Attention needed: Mobile app payment performance degraded");
+    expect(card?.querySelector("h2")?.textContent).toBe("Attention needed: Mobile payment performance degraded");
     expect(card?.textContent).toContain("Worst day Oct 1: 44.6% of 56 completed attempts.");
     expect(card?.querySelector(".badge")?.textContent).toBe("Degraded");
     expect(card?.querySelector(".badge")?.classList.contains("badge-danger")).toBe(true);
-    // The scope is all channels; the button lands on the first degraded channel's failed payments.
-    expect(linkByText("Review unresolved payments")?.getAttribute("href")).toBe("/payments?period=last_7_days&channel=mobile_app&status=failed&ph_period=last_7_days&ph_channel=mobile_app");
+    // The scope is all channels; the button lands on the first degraded channel's failed payments, and Back returns to all channels.
+    expect(linkByText("Review unresolved payments")?.getAttribute("href")).toBe("/payments?period=last_7_days&channel=mobile_app&status=failed&ph_period=last_7_days");
+  });
+
+  it("keeps every channel in the review button when more than one is degraded", async () => {
+    const attention = { ...LAST_7.attention, headline: "Attention needed: Mobile and Website payment performance degraded", degraded_channels: ["mobile_app", "website"] };
+    mockFetch(handlerFor({ ...LAST_7, attention }));
+    page = await renderPage(<PaymentHealthPage />, "/payment-health");
+    await flush();
+    expect(linkByText("Review unresolved payments")?.getAttribute("href")).toBe("/payments?period=last_7_days&status=failed&ph_period=last_7_days");
+    expect(linkByText("Review all 28 unresolved payments")?.getAttribute("href")).toBe("/payments?period=last_7_days&status=failed&ph_period=last_7_days");
   });
 
   it("renders the four KPI cards for a degraded channel with baseline comparison and level tags", async () => {
@@ -656,12 +683,30 @@ describe("PaymentHealthPage", () => {
       const described = page.container.querySelector(`[id='${button.getAttribute("aria-describedby")}']`);
       expect(described?.getAttribute("role")).toBe("tooltip");
     }
+    // A click opens and closes a definition too, for pointers that never hover or focus.
+    const first = buttons[0] ?? null;
+    expect(first?.getAttribute("aria-expanded")).toBe("false");
+    await click(first);
+    expect(first?.getAttribute("aria-expanded")).toBe("true");
+    expect(first?.closest(".infotip")?.classList.contains("infotip-open")).toBe(true);
+    await click(first);
+    expect(first?.closest(".infotip")?.classList.contains("infotip-open")).toBe(false);
     const lower = text().toLowerCase();
     expect(lower).not.toContain("root cause");
     expect(lower).not.toContain("revenue");
     expect(lower).not.toContain("outage");
     expect(lower).not.toContain("incident");
     expect(cardByLabel("Attempt success rate")).not.toBeNull();
+  });
+
+  it("explains an all-channels scope without a verdict per channel, never with the pooled counts", async () => {
+    mockFetch(handlerFor(INSUFFICIENT_ALL));
+    page = await renderPage(<PaymentHealthPage />, "/payment-health?period=custom&from=2026-09-24&to=2026-09-25");
+    await flush();
+    expect(text()).toContain("Completed attempts per channel, period / baseline: Website 28 / 240, Mobile app 0 / 0, In store 10 / 111.");
+    expect(cardByLabel("Attempt success rate")?.textContent).toContain("No channel has 30 completed attempts in the period and 100 in the baseline");
+    expect(text()).not.toContain("351 completed baseline attempts");
+    expect(text()).not.toContain("38 completed attempts;");
   });
 
   it("renders the forbidden and error states", async () => {
