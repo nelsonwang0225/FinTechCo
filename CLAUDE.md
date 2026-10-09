@@ -153,7 +153,7 @@ Entities: Merchant, Location, User, Membership, Customer, Payment, PaymentAttemp
 ## Guardrails
 
 1. **Synthetic data only.** Fictional merchants, invented people, `example.com` emails, masked card details (brand + last4), masked bank references marked "demo record". Never import, paste or generate real customer, card or bank data. The "Demo environment · Synthetic data" indicator stays visible. FinTechCo branding only.
-2. **No new dependencies without asking.** The approved set is exactly: Python `fastapi`, `uvicorn`, `httpx`, `pytest`, `tzdata`; Node `react`, `react-dom`, `react-router-dom` and dev `vite`, `@vitejs/plugin-react`, `typescript`, `@types/react`, `@types/react-dom`, `vitest`, `jsdom`. Charts are hand-written SVG, CSS is plain, dates use `Intl`/`zoneinfo`. Anything else, including linters, requires explicit approval first.
+2. **No new dependencies without asking.** The approved set is exactly: Python `fastapi`, `uvicorn`, `httpx`, `pytest`, `tzdata`, and `ruff` for linting; Node `react`, `react-dom`, `react-router-dom` and dev `vite`, `@vitejs/plugin-react`, `typescript`, `@types/react`, `@types/react-dom`, `vitest`, `jsdom`, plus `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, `globals` for linting. Charts are hand-written SVG, CSS is plain, dates use `Intl`/`zoneinfo`. Anything else requires explicit approval first.
 3. **Money stays integer cents** with an explicit `currency` column, USD only. No floats or decimals in models, SQL, schemas, CSVs or frontend formatting. Every displayed total is derived from the same records shown on detail pages, and a payout reconciles exactly to its movements.
 4. **Merchant scoping is enforced in the backend** on every endpoint: `require()` on every route, `merchant_id` in every query, cross-merchant ids are 404, the session carries only a membership id, the dev session endpoint refuses non-members. Hiding UI is never the enforcement.
 5. **`make test` is green before every commit.** The backend suite, the frontend typecheck and the frontend tests all pass; a change that needs a golden value or a fixture updated says so in its commit message.
@@ -173,3 +173,17 @@ A feature touches the same five places every time; keep each in its usual spot s
 5. **Tests** — `backend/tests/test_<resource>.py` using the fixtures in `tests/conftest.py`: `client_as("maya")` (also `daniel`, `jordan`, `sam` at Alder & Loom, `priya` at Juniper Trail, `sam_copper` at Copper Finch) returns a signed-in `TestClient` over a private copy of the seeded database; `ids.samples[<merchant-slug>][<param>]` gives a real id of each kind; `seeded_conn` is a read-only connection for independent SQL. Add a cross-merchant case for every new by-id route to `CASES` in `tests/test_merchant_scoping.py`; `tests/test_route_permissions.py` picks up the new routes automatically and fails if one is unguarded or lacks a `response_model`. Frontend pages get a `<Name>Page.test.tsx` beside them using `renderPage` and `mockFetch` from `src/test/`.
 
 Git workflow: branch `feature/<ticket>-<slug>` from `main`; keep `make test` green; open a pull request into `main` whose description lists the tests added. Imperative commit subjects; bodies say what was verified.
+
+## Verification loop
+
+Fast feedback while building; CI and human review remain the release gate.
+
+- **While implementing:** every Edit or Write of a `backend/**/*.py` or `frontend/src/**/*.ts(x)` file is linted automatically by the hook in `.claude/settings.json` (ruff or ESLint on that one file). A failure comes back with the linter's output; fix it before moving on.
+- **After each piece:** run the targeted tests for what changed, not the whole suite.
+  - `make test-backend K="<pytest -k expression>"`, e.g. `K="payments and not csv"`
+  - `make test-frontend F=<path or name>`, e.g. `F=src/pages/payments`
+  - `make test-isolation` after touching routes, queries or permissions (merchant scoping, route guards, sessions)
+- **Before handing off:** `make lint`, `make test`, and `cd frontend && npm run build`, all green.
+- **Then:** open a pull request; the `test-and-build` CI job and a human reviewer decide. Never merge or deploy.
+
+`make lint` runs `ruff check .` in `backend/` (rules in `backend/pyproject.toml`) and `eslint src` in `frontend/` (rules in `frontend/eslint.config.js`).
