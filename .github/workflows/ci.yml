@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: make setup PYTHON="${{ steps.setup-python.outputs.python-path }}"
 
+      - name: Lint
+        run: make lint
+
       - name: Run tests
         run: make test
 
