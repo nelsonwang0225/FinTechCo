@@ -630,3 +630,154 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Line chart */
+.line-chart .chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.line-chart .chart-reference line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.line-chart .chart-dot {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.line-chart .low-volume .chart-dot {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.line-chart .chart-hit {
+  fill: transparent;
+}
+.line-chart .chart-gap .chart-hit:hover {
+  fill: var(--color-neutral-soft);
+}
+.line-chart .chart-point:hover .chart-dot {
+  stroke-width: 3;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+}
+.legend-line {
+  border-top: 2px solid var(--color-accent);
+  height: 0;
+}
+.legend-reference {
+  border-top: 2px dashed var(--color-ink-faint);
+  height: 0;
+}
+.legend-hollow {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+}
+.legend-gap {
+  width: 12px;
+  background: var(--color-neutral-soft);
+}
+
+/* Payment Health */
+.health .health-section,
+.health > .card,
+.health .overview-grid {
+  margin-bottom: var(--space-5);
+}
+.health .overview-grid .health-section {
+  margin-bottom: 0;
+}
+.section-note,
+.chart-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.chart-note {
+  margin: var(--space-2) 0 0;
+}
+.cell-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.link-button[aria-pressed="true"]::after {
+  content: " · selected";
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+.attention-degraded .attention-dot {
+  background: var(--color-danger);
+}
+.attention-healthy .attention-dot {
+  background: var(--color-success);
+}
+.attention-detail a {
+  white-space: nowrap;
+}
+.definitions summary {
+  cursor: pointer;
+  margin: 0;
+}
+.definition-list {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-md);
+}
+.definition-list > div {
+  display: contents;
+}
+.definition-list dt {
+  font-weight: 500;
+}
+.definition-list dd {
+  margin: 0;
+  color: var(--color-ink-secondary);
+}
+@media (max-width: 640px) {
+  .definition-list {
+    grid-template-columns: 1fr;
+  }
+  .definition-list dd {
+    margin-bottom: var(--space-2);
+  }
+}

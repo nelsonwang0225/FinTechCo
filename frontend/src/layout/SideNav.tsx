@@ -2,7 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 import { NavLink } from "react-router-dom";
 import type { Permission } from "../api/types";
 import { DemoIndicator } from "./DemoIndicator";
-import { IconCustomers, IconDisputes, IconOverview, IconPayments, IconPayouts, IconReports, IconSettings } from "./icons";
+import { IconCustomers, IconDisputes, IconHealth, IconOverview, IconPayments, IconPayouts, IconReports, IconSettings } from "./icons";
 
 export interface NavItem {
   to: string;
@@ -15,6 +15,7 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: "/overview", label: "Overview", anyOf: ["overview:read"], icon: IconOverview },
   { to: "/payments", label: "Payments", anyOf: ["payments:read"], icon: IconPayments },
+  { to: "/payment-health", label: "Payment Health", anyOf: ["payments:read"], icon: IconHealth },
   { to: "/payouts", label: "Payouts", anyOf: ["payouts:read"], icon: IconPayouts },
   { to: "/customers", label: "Customers", anyOf: ["customers:read"], icon: IconCustomers },
   { to: "/disputes", label: "Disputes", anyOf: ["disputes:read"], icon: IconDisputes },

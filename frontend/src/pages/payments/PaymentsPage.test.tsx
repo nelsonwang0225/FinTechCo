@@ -91,4 +91,55 @@ describe("PaymentsPage", () => {
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
+
+  it("filters attempts by recorded failure signal, in the list, the export and a removable chip", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=issuer_unavailable&channel=mobile_app");
+    await flush();
+    const el = page.container;
+    const listUrl = () => calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url;
+    expect(listUrl()).toBe("/api/attempts?period=last_7_days&outcome=failed&failure_code=issuer_unavailable&channel=mobile_app&sort=created_at&dir=desc&page=1&page_size=25");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toBe(
+      "/api/reports/attempts.csv?period=last_7_days&outcome=failed&failure_code=issuer_unavailable&channel=mobile_app&sort=created_at&dir=desc",
+    );
+    expect(el.querySelector<HTMLSelectElement>("#attempts-failure-signal")?.value).toBe("issuer_unavailable");
+    expect(el.textContent).toContain("Failure signal: Issuer unavailable");
+    await click(el.querySelector("[aria-label='Remove filter Failure signal: Issuer unavailable']"));
+    await flush();
+    expect(listUrl()).not.toContain("failure_code");
+    expect(listUrl()).toContain("outcome=failed");
+    await setValue(el.querySelector("#attempts-failure-signal"), "do_not_honor");
+    await flush();
+    expect(listUrl()).toContain("outcome=failed&failure_code=do_not_honor");
+  });
+
+  it("offers Back to Payment Health only when opened from it, restoring the original scope", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed");
+    await flush();
+    expect(page.container.textContent).not.toContain("Back to Payment Health");
+    page.unmount();
+
+    const { calls } = mockFetch(handler);
+    page = await renderPage(
+      <PaymentsPage />,
+      "/payments?tab=attempts&outcome=failed&period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app" +
+        "&health_period=custom&health_from=2026-10-01&health_to=2026-10-02&health_channel=mobile_app",
+    );
+    await flush();
+    const el = page.container;
+    const back = () => Array.from(el.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health"))?.getAttribute("href");
+    const expected = "/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app";
+    expect(back()).toBe(expected);
+    // The carried scope never reaches the API.
+    expect(calls.every((c) => !c.url.includes("health_"))).toBe(true);
+    // Narrowing the list, clearing filters and switching tabs keep the way back to the original scope.
+    await setValue(el.querySelector("#attempts-channel"), "website");
+    await flush();
+    await click(Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Clear all") ?? null);
+    await flush();
+    await click(Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments") ?? null);
+    await flush();
+    expect(back()).toBe(expected);
+  });
 });

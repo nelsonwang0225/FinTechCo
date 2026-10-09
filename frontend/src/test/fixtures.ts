@@ -1,3 +1,4 @@
+import type { PaymentHealth } from "../api/payment-health-types";
 import type { AttemptListResponse, PaymentDetail, PaymentListResponse } from "../api/payments-types";
 import type { Meta } from "../api/types";
 
@@ -18,6 +19,11 @@ export const META: Meta = {
     { value: "succeeded", label: "Succeeded" },
     { value: "failed", label: "Failed" },
     { value: "pending", label: "Pending" },
+  ],
+  failure_signals: [
+    { value: "insufficient_funds", label: "Insufficient funds" },
+    { value: "do_not_honor", label: "Do not honor" },
+    { value: "issuer_unavailable", label: "Issuer unavailable" },
   ],
   refund_statuses: [
     { value: "pending", label: "Pending" },
@@ -199,4 +205,65 @@ export const ANCHOR_DETAIL: PaymentDetail = {
     { kind: "note", at: "2026-09-26T15:40:12Z", title: "Note by Maya Chen", detail: "Customer called about a second charge.", upcoming: false, amount_cents: null, ref_id: "evt_anchor00000001" },
     { kind: "payout_paid", at: "2026-09-28T14:00:00Z", title: "Payout paid", detail: "Arrived at the bank account", upcoming: false, amount_cents: null, ref_id: "po_anchor000000001" },
   ],
+};
+
+const TREND_DAYS: [string, number, number, number][] = [
+  ["2026-09-29", 75, 4, 0],
+  ["2026-09-30", 89, 7, 0],
+  ["2026-10-01", 84, 38, 0],
+  ["2026-10-02", 81, 18, 0],
+  ["2026-10-03", 96, 9, 0],
+  ["2026-10-04", 62, 13, 0],
+  ["2026-10-05", 12, 1, 2],
+];
+
+/** Maya's last 7 days: the mobile app is degraded against its baseline; the other channels are not. */
+export const PAYMENT_HEALTH: PaymentHealth = {
+  period: PERIOD,
+  baseline: { days: 30, from_date: "2026-08-30", to_date: "2026-09-28", range_label: "Aug 30 – Sep 28, 2026" },
+  channel: null,
+  channel_label: null,
+  rules: { baseline_days: 30, degraded_drop_bp: 1000, min_period_completed: 50, min_baseline_completed: 200, low_volume_day_completed: 20, quick_recovery_seconds: 3600 },
+  attention: {
+    state: "degraded",
+    state_label: "Degradation detected",
+    degraded_channels: [{ channel: "mobile_app", channel_label: "Mobile app", success_rate_bp: 7204, baseline_rate_bp: 9079, change_bp: -1875, failed: 52 }],
+  },
+  summary: {
+    succeeded: 499,
+    failed: 90,
+    pending: 2,
+    completed: 589,
+    success_rate_bp: 8472,
+    baseline: { succeeded: 1903, failed: 182, completed: 2085, success_rate_bp: 9127 },
+    change_bp: -655,
+  },
+  channels: [
+    { channel: "website", channel_label: "Website", succeeded: 246, failed: 20, pending: 1, completed: 266, success_rate_bp: 9248, baseline_completed: 1060, baseline_rate_bp: 9142, change_bp: 106, assessment: "healthy", assessment_label: "No significant degradation" },
+    { channel: "mobile_app", channel_label: "Mobile app", succeeded: 134, failed: 52, pending: 1, completed: 186, success_rate_bp: 7204, baseline_completed: 630, baseline_rate_bp: 9079, change_bp: -1875, assessment: "degraded", assessment_label: "Degraded" },
+    { channel: "in_store", channel_label: "In store", succeeded: 119, failed: 18, pending: 0, completed: 137, success_rate_bp: 8686, baseline_completed: 395, baseline_rate_bp: 9165, change_bp: -479, assessment: "healthy", assessment_label: "No significant degradation" },
+  ],
+  trend: TREND_DAYS.map(([day, succeeded, failed, pending]) => {
+    const completed = succeeded + failed;
+    return { day, succeeded, failed, pending, success_rate_bp: Math.floor((succeeded * 20000 + completed) / (2 * completed)), low_volume: completed < 20 };
+  }),
+  failure_signals: [
+    { failure_code: "issuer_unavailable", label: "Issuer unavailable", failed_attempts: 32 },
+    { failure_code: "do_not_honor", label: "Do not honor", failed_attempts: 17 },
+    { failure_code: "insufficient_funds", label: "Insufficient funds", failed_attempts: 41 },
+  ],
+  recovery: {
+    affected_payments: 83,
+    recovered_payments: 55,
+    recovered_within_hour_payments: 54,
+    in_progress_payments: 0,
+    unresolved_payments: 28,
+    affected_value_cents: 2334007,
+    recovered_value_cents: 1571734,
+    recovered_within_hour_value_cents: 1561734,
+    in_progress_value_cents: 0,
+    unresolved_value_cents: 762273,
+    currency: "USD",
+  },
+  unresolved_payments: [{ ...PAYMENTS.items[0]!, id: "pay_unresolved0001", order_reference: "AL-12077", status: "failed", status_label: "Failed", refunded_cents: 0, net_cents: 34398 }],
 };

@@ -175,6 +175,26 @@ export function greetingFor(asOf: string): string {
   return "Good evening";
 }
 
+/** Integer basis points (1/100 of a percent) to "72.0%", rounded half-up to one decimal. Null means no rate. */
+export function formatPercentBp(bp: number | null): string {
+  if (bp === null) return "—";
+  return `${tenths(bp)}%`;
+}
+
+/** A signed change in basis points to "−18.8 pts" / "+1.1 pts" / "0.0 pts"; `sign: false` gives "18.8 pts". */
+export function formatPointsBp(bp: number | null, options: { sign?: boolean } = {}): string {
+  if (bp === null) return "—";
+  const text = tenths(Math.abs(bp));
+  if (text === "0.0" || options.sign === false) return `${text} pts`;
+  return `${bp < 0 ? MINUS : "+"}${text} pts`;
+}
+
+/** Non-negative basis points to a one-decimal percentage string, integer math only. */
+function tenths(bp: number): string {
+  const t = Math.floor((Math.trunc(bp) + 5) / 10);
+  return `${Math.floor(t / 10).toLocaleString("en-US")}.${t % 10}`;
+}
+
 export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
