@@ -10,7 +10,7 @@ PY := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 DB := backend/data/fintechco.db
 
-.PHONY: setup seed reset run test
+.PHONY: setup seed reset run test lint test-backend test-frontend test-isolation
 
 setup:
 	@if [ -z "$(PYTHON)" ]; then echo "No python3 interpreter found. Install Python 3.11 or newer."; exit 1; fi
@@ -45,3 +45,17 @@ test:
 	cd frontend && npx tsc --noEmit -p tsconfig.json
 	cd frontend && npx vitest run
 
+lint:
+	cd backend && .venv/bin/ruff check .
+	cd frontend && npx eslint src
+
+# Targeted runs for the edit-test loop. K is a pytest -k expression, F a vitest file filter; both default to everything.
+test-backend:
+	cd backend && .venv/bin/pytest -v $(if $(K),-k "$(K)")
+
+test-frontend:
+	cd frontend && npx vitest run $(F)
+
+# Merchant isolation, route guards and session handling.
+test-isolation:
+	cd backend && .venv/bin/pytest -v tests/test_merchant_scoping.py tests/test_route_permissions.py tests/test_auth_sessions.py
