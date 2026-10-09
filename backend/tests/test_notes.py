@@ -31,6 +31,8 @@ def test_note_persists_and_records_the_actor(client_as, app, ids: Ids) -> None:
     assert after["notes"][-1]["id"] == note["id"]
     assert after["notes"][-1]["actor"]["full_name"] == "Maya Chen"
     assert after["timeline"][-1]["kind"] == "note" and after["timeline"][-1]["title"] == "Note by Maya Chen"
+    # Written on the wall clock, ahead of the reporting clock, but it already happened: never "upcoming".
+    assert after["timeline"][-1]["upcoming"] is False
 
 
 def test_actor_comes_from_the_session_not_the_body(client_as, ids: Ids) -> None:

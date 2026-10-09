@@ -19,6 +19,11 @@ export const META: Meta = {
     { value: "failed", label: "Failed" },
     { value: "pending", label: "Pending" },
   ],
+  failure_codes: [
+    { value: "insufficient_funds", label: "Insufficient funds" },
+    { value: "do_not_honor", label: "Do not honor" },
+    { value: "issuer_unavailable", label: "Issuer unavailable" },
+  ],
   refund_statuses: [
     { value: "pending", label: "Pending" },
     { value: "succeeded", label: "Succeeded" },
@@ -96,6 +101,8 @@ export const PAYMENTS: PaymentListResponse = {
   page: 1,
   page_size: 25,
   total: 2,
+  total_amount_cents: 39998,
+  currency: "USD",
   period: PERIOD,
 };
 

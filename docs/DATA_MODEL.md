@@ -33,6 +33,18 @@ Authoritative DDL: `backend/app/db/schema.sql`. This page explains the rules the
 - **Timelines** (payment detail, dispute case history), **customer activity**, **payout itemisation**, **funds available**, the **next payout** and every **Overview total** are computed from the rows they summarise at read time.
 - The one stored derived number, `payout.amount_cents`, is verified against its movements at seed time, in tests, and on every detail read.
 
+### Payment Health
+
+`GET /api/payment-health` is computed per request from `payment_attempt`, `payment` and `payment_summary`; the rule and its constants live in `app/core/health.py` and nothing about it is stored.
+
+- **Rate**: completed-attempt success, `succeeded / (succeeded + failed)`, in integer basis points rounded half-up. Pending attempts never enter a rate. Attempts are bucketed on `payment_attempt.created_at` by America/Chicago day and by the payment's channel, the same timestamp the Attempts tab filters on.
+- **Baseline**: the same channel over the `BASELINE_DAYS` (30) Chicago days ending the day before the period starts. Its range is reported with the merchant's `history_starts` (the Chicago date of its first recorded attempt); the baseline is *partial* when history starts after the baseline's first day.
+- **Rule**, per channel, never over pooled counts: fewer than `MIN_PERIOD_COMPLETED` (30) completed attempts in the period → `insufficient_volume`; fewer than `MIN_BASELINE_COMPLETED` (100) in the baseline → `no_baseline` when recorded history starts after the baseline's first day (there is nothing to compare against yet), otherwise `insufficient_volume`; with enough volume, `degraded` when the baseline rate minus the period rate is at least `DEGRADED_DROP_BP` (1000), else `normal`. Normal means no significant degradation was detected, never that every payment succeeded. The all-channels scope takes the worst per-channel verdict (degraded, then normal, then no_baseline, then insufficient_volume).
+- **Trend**: one point per Chicago day of the period; a day with no completed attempt has no rate (a gap, never 0%), and a day with fewer than `LOW_VOLUME_DAY_COMPLETED` (10) is marked low volume. The worst day quoted as evidence is the lowest-rate day with at least that many completed attempts, falling back to any day with one.
+- **Failure signals**: failed attempts in scope grouped by the recorded `failure_code`, most frequent first. The labels in `core/labels.py` (`FAILURE_CODE_LABELS`) mirror the seed's `DECLINE_CODES` table exactly, and `/api/meta` serves them as filter options.
+- **Recovery** is counted per payment, never per attempt, over payments created in the period with at least one failed attempt: `recovered_within_window` when a succeeded attempt completed no later than `RECOVERY_WINDOW` (1 hour) after the payment's first attempt was created, `recovered_later` otherwise, `attempt_pending` when there is no success and the latest attempt is pending, else `unresolved`. Each payment's amount is counted once, in its state.
+- **Unresolved** is exactly the Payments list's derived status `failed` for the same period and channel, so the drill-down totals agree.
+
 ## Ledger
 
 `balance_movement.amount_cents` carries the sign and the type fixes it:

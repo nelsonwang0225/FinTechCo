@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useId } from "react";
+import { useContainerWidth } from "./chartSize";
 
 export interface BarChartPoint {
   label: string;
@@ -12,27 +13,6 @@ export function niceCeiling(max: number): number {
   const unit = max / magnitude;
   const factor = unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10;
   return factor * magnitude;
-}
-
-const DEFAULT_WIDTH = 720;
-
-/** The rendered width of the chart's container, so the SVG draws at 1:1 and labels keep their type size. */
-function useContainerWidth(): [RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const w = Math.round(el.getBoundingClientRect().width);
-      if (w > 0) setWidth(w);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
 }
 
 /**

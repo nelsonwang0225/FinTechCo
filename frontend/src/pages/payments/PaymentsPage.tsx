@@ -16,15 +16,19 @@ export function PaymentsPage() {
   const query = useQueryState();
   const meta = useApi<Meta>("/api/meta");
   const tab = query.get("tab", "payments") === "attempts" ? "attempts" : "payments";
-
   return (
     <>
-      <PageHeader title="Payments" subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago." />
+      {/* Opened from Payment Health, each tab shows a context bar with the way back. The `ph_` keys it reads are never
+          cleared by the filter, sort, tab or page patches below (query.set merges), so it survives narrowing the list. */}
+      <PageHeader
+        title="Payments"
+        subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago."
+      />
       <Tabs
         tabs={TABS}
         active={tab}
         label="Payments views"
-        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, sort: null, dir: null })}
+        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, failure_code: null, sort: null, dir: null })}
       />
       {meta.loading && !meta.data ? <LoadingState rows={4} /> : null}
       {meta.error ? <ErrorState error={meta.error} onRetry={meta.reload} /> : null}

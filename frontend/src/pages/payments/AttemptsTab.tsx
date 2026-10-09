@@ -7,12 +7,15 @@ import { useApi } from "../../api/useApi";
 import { ActiveFilters, type Chip } from "../../components/ActiveFilters";
 import { DataTable, type Column } from "../../components/DataTable";
 import { FilterBar, FilterSearch, FilterSelect } from "../../components/FilterBar";
+import { HealthContextBar } from "../../components/HealthContextBar";
 import { Money } from "../../components/Money";
 import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { IconDownload } from "../../layout/icons";
+import { formatCount } from "../../lib/format";
+import { backToHealthHref, paymentDetailHref } from "../../lib/healthScope";
 import type { QueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
 import { PeriodFilter, periodParams } from "./PeriodFilter";
@@ -29,6 +32,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
     sort,
@@ -39,12 +43,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
   const { page: _page, page_size: _pageSize, ...exportParams } = params;
   const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
+  const healthBack = backToHealthHref(query);
+  const detailHref = (paymentId: string) => paymentDetailHref(paymentId, query);
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
     const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
     if (query.get("q")) out.push({ key: "q", label: `Search: ${query.get("q")}`, onRemove: () => query.set({ q: null }) });
     if (query.get("outcome")) out.push({ key: "outcome", label: `Outcome: ${label(meta.attempt_outcomes, query.get("outcome"))}`, onRemove: () => query.set({ outcome: null }) });
+    if (query.get("failure_code")) out.push({ key: "failure_code", label: `Signal: ${label(meta.failure_codes, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
     if (query.get("channel")) out.push({ key: "channel", label: `Channel: ${label(meta.channels, query.get("channel"))}`, onRemove: () => query.set({ channel: null }) });
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
@@ -59,7 +66,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       header: "Attempted",
       sortKey: "created_at",
       render: (a) => (
-        <Link to={`/payments/${a.payment_id}`} className="row-link" onClick={(e) => e.stopPropagation()}>
+        <Link to={detailHref(a.payment_id)} className="row-link" onClick={(e) => e.stopPropagation()}>
           <Timestamp iso={a.created_at} />
         </Link>
       ),
@@ -81,10 +88,19 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
 
   return (
     <>
+      {healthBack && list.data ? (
+        <HealthContextBar
+          parts={contextParts(meta, query, list.data.period.range_label)}
+          backHref={healthBack}
+          result={`${formatCount(list.data.total)} ${query.get("outcome") === "failed" ? "failed " : ""}attempt${list.data.total === 1 ? "" : "s"}`}
+        />
+      ) : null}
       <FilterBar>
         <FilterSearch id="attempts-search" label="Search" value={query.get("q")} placeholder="Order, customer, email or id" onChange={(v) => query.set({ q: v })} />
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
+        {/* A recorded signal narrows by failure code alone; it does not force the outcome, the API ANDs the two. */}
+        <FilterSelect id="attempts-failure-code" label="Recorded signal" value={query.get("failure_code")} options={meta.failure_codes} onChange={(v) => query.set({ failure_code: v })} />
         <FilterSelect
           id="attempts-channel"
           label="Channel"
@@ -102,7 +118,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, failure_code: null, channel: null, location_id: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (
@@ -124,7 +140,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
             rowKey={(a) => a.id}
             sort={{ sort, dir }}
             onSort={onSort}
-            onRowClick={(a) => navigate(`/payments/${a.payment_id}`)}
+            onRowClick={(a) => navigate(detailHref(a.payment_id))}
             loading={list.loading}
           />
           <Pagination page={list.data.page} pageSize={list.data.page_size} total={list.data.total} onPage={(p) => query.set({ page: p })} />
@@ -132,4 +148,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       ) : null}
     </>
   );
+}
+
+/** The context bar's description of the list, from the filters in the URL, in the order a person reads them. */
+function contextParts(meta: Meta, query: QueryState, rangeLabel: string): string[] {
+  const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
+  const parts = [rangeLabel, query.get("channel") ? label(meta.channels, query.get("channel")) : "All channels"];
+  if (query.get("location_id")) parts.push(meta.locations.find((l) => l.id === query.get("location_id"))?.name ?? "Unknown location");
+  if (query.get("outcome")) parts.push(label(meta.attempt_outcomes, query.get("outcome")));
+  if (query.get("failure_code")) parts.push(label(meta.failure_codes, query.get("failure_code")));
+  if (query.get("q")) parts.push(`Search: ${query.get("q")}`);
+  return parts;
 }

@@ -11,18 +11,31 @@ import { Timestamp } from "../../components/Timestamp";
 import { EmptyState, LoadError, LoadingState } from "../../components/states";
 import { PageHeader } from "../../layout/PageHeader";
 import { IconChevronLeft } from "../../layout/icons";
+import { attemptChainSummary } from "../../lib/attemptChain";
+import { backToHealthHref, backToListLink } from "../../lib/healthScope";
+import { useQueryState } from "../../lib/query";
 import { useSession } from "../../session/SessionProvider";
 
 export function PaymentDetailPage() {
   const { paymentId = "" } = useParams();
   const { can } = useSession();
+  const query = useQueryState();
+  // Opened from a list that was reached from Payment Health, the URL carries that list's query: link back to both.
+  const backToList = backToListLink(query);
+  const backToHealth = backToHealthHref(query);
   const detail = useApi<PaymentDetail>(`/api/payments/${encodeURIComponent(paymentId)}`);
 
   if (detail.error) {
     return (
       <>
         <PageHeader title="Payment" />
-        <LoadError error={detail.error} onRetry={detail.reload} what="payment" backTo="/payments" backLabel="Back to Payments" />
+        <LoadError
+          error={detail.error}
+          onRetry={detail.reload}
+          what="payment"
+          backTo={backToList?.href ?? "/payments"}
+          backLabel={backToList?.label ?? "Back to Payments"}
+        />
       </>
     );
   }
@@ -91,10 +104,25 @@ export function PaymentDetailPage() {
     <>
       <PageHeader
         above={
-          <Link to="/payments">
-            <IconChevronLeft />
-            Payments
-          </Link>
+          backToList ? (
+            <span className="breadcrumb-links">
+              <Link to={backToList.href}>
+                <IconChevronLeft />
+                {backToList.label}
+              </Link>
+              {backToHealth ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <Link to={backToHealth}>Back to Payment Health</Link>
+                </>
+              ) : null}
+            </span>
+          ) : (
+            <Link to="/payments">
+              <IconChevronLeft />
+              Payments
+            </Link>
+          )
         }
         title={
           <span className="detail-title">
@@ -108,13 +136,21 @@ export function PaymentDetailPage() {
           </>
         }
         actions={
-          <div className="detail-amount">
-            <Money cents={p.amount_cents} className="detail-amount-value" />
-            {p.refunded_cents > 0 ? (
-              <span className="muted">
-                Net <Money cents={p.net_cents} /> after refunds
-              </span>
+          <div className="detail-actions">
+            {backToList && can("notes:write") ? (
+              // In an investigation the note is the next step; this takes the person to the existing composer.
+              <button type="button" className="btn btn-sm" onClick={focusNoteComposer}>
+                Add investigation note
+              </button>
             ) : null}
+            <div className="detail-amount">
+              <Money cents={p.amount_cents} className="detail-amount-value" />
+              {p.refunded_cents > 0 ? (
+                <span className="muted">
+                  Net <Money cents={p.net_cents} /> after refunds
+                </span>
+              ) : null}
+            </div>
           </div>
         }
       />
@@ -141,6 +177,7 @@ export function PaymentDetailPage() {
           <h2 id="attempts-heading" className="section-title">
             Attempts
           </h2>
+          <AttemptChain attempts={p.attempts} />
           <DataTable caption="Payment attempts" columns={attemptColumns} rows={p.attempts} rowKey={(a) => a.id} />
         </section>
 
@@ -189,5 +226,42 @@ export function PaymentDetailPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function focusNoteComposer() {
+  const field = document.getElementById("note-body");
+  field?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  field?.focus({ preventScroll: true });
+}
+
+/**
+ * The attempts read as one customer's story: a summary line from the recorded attempts, then each attempt with its
+ * outcome and recorded signal in order. The table below keeps the full detail (times, method, completion).
+ */
+function AttemptChain({ attempts }: { attempts: AttemptItem[] }) {
+  const ordered = [...attempts].sort((a, b) => a.attempt_number - b.attempt_number);
+  return (
+    <div className="attempt-chain" aria-label="Attempt chain">
+      <p className="attempt-chain-summary">{attemptChainSummary(ordered)}</p>
+      {ordered.length > 0 ? (
+        <ol className="attempt-chain-steps" role="list">
+          {ordered.map((a, i) => (
+            <li key={a.id} className="attempt-chain-step">
+              {i > 0 ? (
+                <span className="attempt-chain-arrow" aria-hidden="true">
+                  →
+                </span>
+              ) : null}
+              <span className="attempt-chain-chip">
+                <span className="attempt-chain-number">Attempt {a.attempt_number}</span>
+                <StatusBadge status={a.outcome} label={a.outcome_label} />
+                {a.failure_message ? <span className="attempt-chain-signal">{a.failure_message}</span> : null}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
   );
 }

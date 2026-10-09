@@ -72,6 +72,7 @@ export interface Meta {
   channels: Option[];
   payment_statuses: Option[];
   attempt_outcomes: Option[];
+  failure_codes: Option[];
   refund_statuses: Option[];
   refund_reasons: Option[];
   dispute_statuses: Option[];

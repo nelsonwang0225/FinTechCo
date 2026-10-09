@@ -100,6 +100,21 @@ export function formatTimestampFull(iso: string): string {
   return dateTimeFull.format(new Date(iso));
 }
 
+const dateTimeMinute = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIMEZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+/** A reporting instant to the minute with its zone, for an "As of" line: "Oct 5, 2026, 9:12 AM CDT". */
+export function formatTimestampMinute(iso: string): string {
+  return dateTimeMinute.format(new Date(iso));
+}
+
 export function formatTime(iso: string): string {
   return timeOnly.format(new Date(iso));
 }
@@ -177,6 +192,41 @@ export function greetingFor(asOf: string): string {
 
 export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
+}
+
+/**
+ * A rate in integer basis points as a percentage with one decimal, rounded half-up: 5579 -> "55.8%". The displayed
+ * rate is the API's basis-point value rounded to tenths, the same rule as core/health.py, never re-derived from counts.
+ */
+export function formatRateBp(bp: number): string {
+  const tenths = Math.floor((Math.trunc(bp) + 5) / 10);
+  return `${Math.floor(tenths / 10)}.${tenths % 10}%`;
+}
+
+/** A difference in basis points as signed percentage points with one decimal: -1875 -> "−18.8 pts", 106 -> "+1.1 pts". */
+export function formatPointsBp(bp: number): string {
+  const abs = Math.abs(Math.trunc(bp));
+  const tenths = Math.floor((abs + 5) / 10);
+  const body = `${Math.floor(tenths / 10)}.${tenths % 10} pts`;
+  if (tenths === 0) return `0.0 pts`;
+  return bp < 0 ? `${MINUS}${body}` : `+${body}`;
+}
+
+/** Whole minutes from one recorded instant to a later one (rounded down); 0 when `to` is not later. */
+export function minutesBetween(fromIso: string, toIso: string): number {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  return ms > 0 ? Math.floor(ms / 60_000) : 0;
+}
+
+/** An elapsed time in words: "under a minute", "12 minutes", "2 hours 5 minutes", "3 days 4 hours". */
+export function formatElapsedMinutes(minutes: number): string {
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return unit(minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 === 0 ? unit(hours, "hour") : `${unit(hours, "hour")} ${unit(minutes % 60, "minute")}`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? unit(days, "day") : `${unit(days, "day")} ${unit(hours % 24, "hour")}`;
 }
 
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
