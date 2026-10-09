@@ -31,6 +31,7 @@ backend/
     core/labels.py            human labels for every enum value
     core/schedule.py          payout schedules and the next cutoff
     core/timeline.py          payment timeline and dispute history, derived from base records
+    core/health.py            Payment Health rules: success rate in basis points, baseline comparison, recovery
     db/schema.sql             DDL: tables, CHECKs, composite FKs, indexes, payment_summary view
     db/connection.py          per-request connection, WAL, foreign_keys=ON, sqlite3.Row
     db/queries/               one module per resource; every function takes merchant_id first
@@ -39,8 +40,8 @@ backend/
     api/__init__.py           register_routers(): the list of router modules
     api/listing.py            shared period, pagination and "now" helpers for list endpoints
     api/schemas/              Pydantic response models (ApiModel forbids undeclared fields)
-    api/                      routers: dev, session, meta, overview, payments, attempts, payouts,
-                              customers, disputes, reports, settings
+    api/                      routers: dev, session, meta, overview, payments, attempts, payment_health,
+                              payouts, customers, disputes, reports, settings
     exports/csv.py            shared CSV writer and export activity record
     seed/                     scenario.py, generate.py, write.py, verify.py, checksum.py, __main__.py
   tests/                      pytest: one module per resource plus cross-cutting suites
@@ -56,8 +57,8 @@ frontend/
     dev/                      PersonaBar, PersonaChooser (development only, outside product chrome)
     layout/                   AppShell, SideNav, TopBar, PageHeader, DemoIndicator
     components/               DataTable, Pagination, FilterBar, ActiveFilters, Tabs, StatusBadge, Money,
-                              Timestamp, DescriptionList, BarChart, Timeline, NoteComposer, states
-    pages/                    overview, payments, payment-detail, payouts, payout-detail, customers,
+                              Timestamp, DescriptionList, BarChart, LineChart, Timeline, NoteComposer, states
+    pages/                    overview, payments, payment-health, payment-detail, payouts, payout-detail, customers,
                               customer-detail, disputes, dispute-detail, reports, settings
     lib/format.ts             the only place money and timestamps are formatted
     lib/query.ts              URL query-string state for filters, sort, page, tab

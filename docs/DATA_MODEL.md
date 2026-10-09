@@ -31,6 +31,10 @@ Authoritative DDL: `backend/app/db/schema.sql`. This page explains the rules the
 
 - **Payment status** comes from the `payment_summary` view: a succeeded attempt exists → `refunded` if succeeded refunds equal the amount, `partially_refunded` if they are positive, otherwise `succeeded`; no succeeded attempt and the latest attempt is pending → `pending`; otherwise `failed`. Pending refunds do not change status. The view also exposes the method to display (succeeded attempt's, else latest), the payout containing the charge, the dispute, and the customer and location names. Every reader selects from it.
 - **Timelines** (payment detail, dispute case history), **customer activity**, **payout itemisation**, **funds available**, the **next payout** and every **Overview total** are computed from the rows they summarise at read time.
+- **Payment Health** (`app/core/health.py`, `GET /api/payment-health`) is computed at read time from attempts and payments:
+  - *Success rate* is `succeeded / (succeeded + failed)` over attempts whose `created_at` is in the period, as integer basis points rounded half-up; pending attempts are counted but never in the denominator, and no completed attempts means no rate.
+  - *Baseline* is the same scope over the 30 Chicago days before the period. A channel is *degraded* when its rate is at least 10 points below its baseline, and is evaluated only with at least 50 completed attempts in the period and 200 in the baseline.
+  - *Recovery* is per payment, over payments whose `created_at` is in the period: a payment with a failed attempt is *affected*; it is *recovered* once any attempt succeeds (within one hour when the success completes within 3600 s of the first attempt), *in progress* while its latest attempt is pending, and *unresolved* when its latest attempt failed, which is exactly `payment_summary.status = 'failed'`. Each payment's amount is counted once.
 - The one stored derived number, `payout.amount_cents`, is verified against its movements at seed time, in tests, and on every detail read.
 
 ## Ledger
