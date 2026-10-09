@@ -35,6 +35,7 @@ fi
 # What was targeted: test files named in the command, else the -k / K= / F= filter.
 target=$(printf '%s\n' "$cmd" | grep -oE '[A-Za-z0-9_./-]*(test_[A-Za-z0-9_]+\.py|\.test\.tsx?)' | xargs -n1 basename 2>/dev/null | sort -u | paste -sd, -)
 [ -n "$target" ] || target=$(printf '%s\n' "$cmd" | grep -oE '(-k|K=|F=) *"?[^" ]+' | head -1 | sed -E 's/^(-k|K=|F=) *"?//')
+[ -n "$target" ] || case "$cmd" in *"make test-isolation"*) target="isolation" ;; esac
 summary=$(IFS='; '; printf '%s' "${parts[*]}")
 mark="✓"; [ "$failed" -eq 1 ] && mark="✗"
 line="$mark Tests: $summary${target:+ ($target)}"

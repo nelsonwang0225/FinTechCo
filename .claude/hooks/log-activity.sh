@@ -25,6 +25,7 @@ line=$(printf '%s' "$input" | jq -r --arg root "$root" '
         elif ($t == "Edit" or $t == "Write" or $t == "MultiEdit" or $t == "NotebookEdit") then "\($who)EDIT \(($in.file_path // $in.notebook_path) | short)"
         elif $t == "Bash" then "\($who)BASH \($in.command | flat)"
         elif ($t == "Agent" or $t == "Task") then "\($who)AGENT \($in.subagent_type // "agent"): \(($in.description // "") | flat)"
+        elif $t == "SubagentHandback" then "\($who)AGENT ◀ findings returned"
         elif ($t == "WebFetch" or $t == "WebSearch") then "\($who)WEB \(($in.url // $in.query // "") | flat)"
         else "\($who)TOOL \($t)" end
     end')
