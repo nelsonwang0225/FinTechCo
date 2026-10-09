@@ -22,6 +22,10 @@ router = APIRouter(prefix="/api/attempts", tags=["attempts"])
 
 Channel = Literal["website", "mobile_app", "in_store"]
 Outcome = Literal["succeeded", "failed", "pending"]
+FailureCode = Literal[
+    "insufficient_funds", "do_not_honor", "incorrect_cvc", "expired_card", "authentication_failed", "card_velocity_exceeded",
+    "fraud_suspected", "issuer_unavailable", "processing_error", "lost_or_stolen", "incorrect_number",
+]
 AttemptSort = Literal["created_at", "amount", "outcome", "order_reference"]
 Direction = Literal["asc", "desc"]
 Preset = Literal["last_7_days", "last_30_days", "month_to_date", "custom"]
@@ -63,12 +67,14 @@ def list_attempts(
     outcome: Outcome | None = None,
     channel: Channel | None = None,
     location_id: str | None = Query(None, max_length=40),
+    failure_code: FailureCode | None = None,
     sort: AttemptSort = "created_at",
     direction: Direction = Query("desc", alias="dir"),
 ) -> AttemptListResponse:
     resolved = resolve_period(conn, period, from_date, to_date)
     filters = attempts_q.AttemptFilters(
-        start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id, sort=sort, direction=direction
+        start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id, failure_code=failure_code,
+        sort=sort, direction=direction
     )
     rows, total = attempts_q.list_attempts(principal.merchant_id, conn, filters, page)
     return AttemptListResponse(items=[attempt_list_item(r) for r in rows], page=page.page, page_size=page.page_size, total=total, period=period_info(resolved))

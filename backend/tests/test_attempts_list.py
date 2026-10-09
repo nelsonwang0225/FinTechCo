@@ -82,3 +82,31 @@ def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:
     body = client_as("priya").get(f"/api/attempts?{LAST_30}&page_size=50").json()
     assert body["total"] > 0
     assert_scoped(ids, body, ids.merchant("juniper-trail"))
+
+
+@pytest.mark.parametrize("code", ["issuer_unavailable", "insufficient_funds", "lost_or_stolen"])
+def test_failure_signal_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&outcome=failed&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND a.failure_code = :fc", {"fc": code})
+    assert body["total"] > 0
+    assert all(i["failure_code"] == code and i["outcome"] == "failed" for i in body["items"])
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+
+
+def test_failure_signal_filter_rejects_unknown_codes(client_as) -> None:
+    c = client_as("maya")
+    assert c.get("/api/attempts?failure_code=bogus").status_code == 422
+    assert c.get("/api/attempts?failure_code=issuer_unavailable&outcome=succeeded").json()["total"] == 0
+
+
+def test_failure_code_vocabulary_matches_the_recorded_signals() -> None:
+    from typing import get_args
+
+    from app.api import attempts as attempts_api
+    from app.api import reports as reports_api
+    from app.core.labels import FAILURE_CODE_LABELS
+    from app.seed.scenario import DECLINE_CODES
+
+    assert FAILURE_CODE_LABELS == DECLINE_CODES
+    assert set(get_args(attempts_api.FailureCode)) == set(FAILURE_CODE_LABELS)
+    assert set(get_args(reports_api.FailureCode)) == set(FAILURE_CODE_LABELS)

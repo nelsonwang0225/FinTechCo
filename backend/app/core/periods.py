@@ -84,6 +84,13 @@ def resolve(
     return Period(preset=name, from_day=from_day, to_day=to_day, start=start, end=end)
 
 
+def preceding(period: Period, days: int) -> Period:
+    """The ``days`` Chicago calendar days immediately before the period's first day (a comparison baseline)."""
+    from_day, to_day = period.from_day - timedelta(days=days), period.from_day - timedelta(days=1)
+    start, end = chicago_range(from_day, to_day)
+    return Period(preset="custom", from_day=from_day, to_day=to_day, start=start, end=end)
+
+
 def day_buckets(period: Period) -> list[date]:
     """Every Chicago calendar day in the period, in order."""
     days = []

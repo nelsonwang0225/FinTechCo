@@ -43,6 +43,10 @@ Channel = Literal["website", "mobile_app", "in_store"]
 PaymentStatus = Literal["succeeded", "pending", "failed", "partially_refunded", "refunded"]
 PaymentSort = Literal["created_at", "amount", "status", "order_reference", "customer"]
 Outcome = Literal["succeeded", "failed", "pending"]
+FailureCode = Literal[
+    "insufficient_funds", "do_not_honor", "incorrect_cvc", "expired_card", "authentication_failed", "card_velocity_exceeded",
+    "fraud_suspected", "issuer_unavailable", "processing_error", "lost_or_stolen", "incorrect_number",
+]
 AttemptSort = Literal["created_at", "amount", "outcome", "order_reference"]
 RefundStatus = Literal["pending", "succeeded"]
 RefundReason = Literal["requested_by_customer", "damaged_in_transit", "wrong_item", "duplicate", "price_adjustment", "returned_in_store"]
@@ -130,11 +134,15 @@ def attempts_csv(
     outcome: Outcome | None = None,
     channel: Channel | None = None,
     location_id: str | None = Query(None, max_length=40),
+    failure_code: FailureCode | None = None,
     sort: AttemptSort = "created_at",
     direction: Direction = Query("desc", alias="dir"),
 ) -> StreamingResponse:
     resolved = resolve_period(conn, period, from_date, to_date)
-    filters = attempts_q.AttemptFilters(start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id, sort=sort, direction=direction)
+    filters = attempts_q.AttemptFilters(
+        start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id,
+        failure_code=failure_code, sort=sort, direction=direction,
+    )
     filename = csv_export.export_filename(principal.merchant_slug, "attempts", resolved.from_day, resolved.to_day)
     csv_export.record_export(principal, conn, filename, _period_body("payment attempt", resolved))
     rows = (
