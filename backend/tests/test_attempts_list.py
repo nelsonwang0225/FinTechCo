@@ -82,3 +82,29 @@ def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:
     body = client_as("priya").get(f"/api/attempts?{LAST_30}&page_size=50").json()
     assert body["total"] > 0
     assert_scoped(ids, body, ids.merchant("juniper-trail"))
+
+
+def test_failure_code_filter_is_exact_and_reconciles_with_payment_health(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
+    c = client_as("maya")
+    query = f"{LAST_30}&channel=mobile_app&outcome=failed&failure_code=issuer_unavailable"
+    body = c.get(f"/api/attempts?{query}&page_size=100").json()
+    expected = count(seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND a.failure_code = 'issuer_unavailable' AND p.channel = 'mobile_app'")
+    assert body["total"] == expected > 0
+    assert {i["failure_code"] for i in body["items"]} == {"issuer_unavailable"}
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+    signals = c.get(f"/api/payment-health?{LAST_30}&channel=mobile_app").json()["failure_signals"]
+    assert next(s["failed_attempts"] for s in signals if s["failure_code"] == "issuer_unavailable") == body["total"]
+
+
+def test_unknown_failure_code_is_422(client_as) -> None:
+    c = client_as("maya")
+    assert c.get("/api/attempts?failure_code=card_declined").status_code == 422
+    assert c.get("/api/reports/attempts.csv?failure_code=card_declined").status_code == 422
+
+
+def test_failure_signal_options_are_the_labelled_catalogue(client_as) -> None:
+    body = client_as("sam").get("/api/attempts/failure-signals").json()
+    assert set(body) == {"options"}
+    values = [o["value"] for o in body["options"]]
+    assert len(values) == 11 and "issuer_unavailable" in values
+    assert {"value": "issuer_unavailable", "label": "Issuer unavailable"} in body["options"]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from app.api.schemas.common import ApiModel
+from app.api.schemas.common import ApiModel, Option
 
 
 class PeriodInfo(ApiModel):
@@ -176,3 +176,7 @@ class PaymentDetail(ApiModel):
     refunds: list[RefundItem]
     notes: list[NoteItem]
     timeline: list[TimelineEventItem]
+
+
+class FailureSignalOptions(ApiModel):
+    options: list[Option]
