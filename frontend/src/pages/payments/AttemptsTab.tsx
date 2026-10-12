@@ -31,6 +31,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     outcome: query.get("outcome") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     sort,
     dir,
     page,
@@ -49,6 +50,9 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
+    }
+    if (query.get("failure_code")) {
+      out.push({ key: "failure_code", label: `Failure signal: ${label(meta.failure_codes, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
     }
     return out;
   }, [query, meta]);
@@ -86,6 +90,13 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
         <FilterSelect
+          id="attempts-failure-code"
+          label="Failure signal"
+          value={query.get("failure_code")}
+          options={meta.failure_codes}
+          onChange={(v) => query.set({ failure_code: v })}
+        />
+        <FilterSelect
           id="attempts-channel"
           label="Channel"
           value={query.get("channel")}
@@ -102,7 +113,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null, failure_code: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (

@@ -15,6 +15,7 @@ class MetaResponse(ApiModel):
     channels: list[Option]
     payment_statuses: list[Option]
     attempt_outcomes: list[Option]
+    failure_codes: list[Option]
     refund_statuses: list[Option]
     refund_reasons: list[Option]
     dispute_statuses: list[Option]

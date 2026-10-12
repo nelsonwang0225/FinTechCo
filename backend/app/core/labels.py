@@ -11,6 +11,32 @@ PAYMENT_STATUS_LABELS: dict[str, str] = {
     "refunded": "Refunded",
 }
 ATTEMPT_OUTCOME_LABELS: dict[str, str] = {"succeeded": "Succeeded", "failed": "Failed", "pending": "Pending"}
+# Recorded failure codes on failed attempts. The seed copies the label into failure_message.
+FAILURE_CODE_LABELS: dict[str, str] = {
+    "insufficient_funds": "Insufficient funds",
+    "do_not_honor": "Do not honor",
+    "incorrect_cvc": "Incorrect security code",
+    "expired_card": "Expired card",
+    "authentication_failed": "Authentication failed",
+    "card_velocity_exceeded": "Card velocity exceeded",
+    "fraud_suspected": "Suspected fraud",
+    "issuer_unavailable": "Issuer unavailable",
+    "processing_error": "Processing error",
+    "lost_or_stolen": "Card reported lost or stolen",
+    "incorrect_number": "Incorrect card number",
+}
+HEALTH_ASSESSMENT_LABELS: dict[str, str] = {
+    "degraded": "Degraded",
+    "no_significant_degradation": "No significant degradation",
+    "insufficient_volume": "Not enough volume to assess",
+    "no_completed_attempts": "No completed attempts",
+}
+HEALTH_ATTENTION_LABELS: dict[str, str] = {
+    "degraded": "Degradation detected",
+    "no_significant_degradation": "No significant degradation detected",
+    "insufficient_data": "Not enough completed attempts to assess",
+    "no_completed_attempts": "No completed attempts in this period",
+}
 REFUND_STATUS_LABELS: dict[str, str] = {"pending": "Pending", "succeeded": "Succeeded"}
 REFUND_REASON_LABELS: dict[str, str] = {
     "requested_by_customer": "Requested by customer",

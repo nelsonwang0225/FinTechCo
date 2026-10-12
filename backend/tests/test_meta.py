@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.labels import FAILURE_CODE_LABELS
 from tests.conftest import Ids, assert_scoped
 
 
@@ -30,7 +31,7 @@ def test_meta_has_options_and_scoped_locations(client_as, ids: Ids) -> None:
     assert [loc["name"] for loc in body["locations"]] == ["Fulton Market", "Lincoln Park"]
     assert_scoped(ids, body, ids.merchant("alder-loom"))
     assert integers_in(body) == [], "meta must carry no counts"
-    assert "failure_codes" not in body
+    assert body["failure_codes"] == [{"value": code, "label": label} for code, label in FAILURE_CODE_LABELS.items()]
 
 
 def test_meta_locations_follow_the_session_merchant(client_as, ids: Ids) -> None:

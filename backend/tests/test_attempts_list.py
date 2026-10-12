@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import get_args
 
 import pytest
 
+from app.api.attempts import FailureCode
+from app.core.labels import FAILURE_CODE_LABELS
 from tests.conftest import Ids, assert_scoped
 
 LAST_30 = "period=last_30_days"
@@ -76,6 +79,24 @@ def test_search_and_sort(client_as) -> None:
     assert amounts == sorted(amounts, reverse=True)
     assert c.get("/api/attempts?sort=failure_code").status_code == 422
     assert c.get("/api/attempts?outcome=declined").status_code == 422
+
+
+def test_failure_code_options_match_the_recorded_labels() -> None:
+    assert set(get_args(FailureCode)) == set(FAILURE_CODE_LABELS)
+
+
+@pytest.mark.parametrize("code", ["issuer_unavailable", "insufficient_funds", "lost_or_stolen"])
+def test_failure_code_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    c = client_as("maya")
+    body = c.get(f"/api/attempts?{LAST_30}&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.failure_code = :f", {"f": code})
+    assert all(i["failure_code"] == code and i["outcome"] == "failed" for i in body["items"])
+    scoped = c.get(f"/api/attempts?{LAST_30}&outcome=failed&channel=mobile_app&failure_code={code}").json()
+    assert scoped["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND p.channel = 'mobile_app' AND a.failure_code = :f", {"f": code})
+
+
+def test_failure_code_filter_rejects_unknown_codes(client_as) -> None:
+    assert client_as("maya").get("/api/attempts?failure_code=card_declined").status_code == 422
 
 
 def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:

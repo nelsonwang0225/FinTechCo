@@ -179,6 +179,32 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/** Basis points as tenths of a point, rounded half-up with integer math: 9194 -> 919. */
+function tenthsOfPoint(bp: number): number {
+  return Math.floor((Math.abs(Math.trunc(bp)) + 5) / 10);
+}
+
+/** A rate in integer basis points to "91.9%"; null (nothing completed) to an em dash. */
+export function formatRate(bp: number | null): string {
+  if (bp === null) return "—";
+  const t = tenthsOfPoint(bp);
+  return `${Math.floor(t / 10)}.${t % 10}%`;
+}
+
+/** A size of difference in basis points, unsigned: 1000 -> "10.0 pts". */
+export function formatPoints(bp: number): string {
+  const t = tenthsOfPoint(bp);
+  return `${Math.floor(t / 10)}.${t % 10} pts`;
+}
+
+/** A change between two rates in basis points to "−18.8 pts" / "+1.1 pts" / "0.0 pts"; null to an em dash. */
+export function formatPointChange(bp: number | null): string {
+  if (bp === null) return "—";
+  const t = tenthsOfPoint(bp);
+  const sign = t === 0 ? "" : bp < 0 ? MINUS : "+";
+  return `${sign}${Math.floor(t / 10)}.${t % 10} pts`;
+}
+
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
 export function nowMs(): number {
   return Date.now();

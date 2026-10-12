@@ -70,6 +70,37 @@ describe("PaymentsPage", () => {
     expect(el.querySelector("#payments-status")).not.toBeNull();
   });
 
+  it("filters attempts by recorded failure signal, shows it as a chip and exports the same filter", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed");
+    await flush();
+    await setValue(page.container.querySelector("#attempts-failure-code"), "issuer_unavailable");
+    await flush();
+    const last = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(last?.url).toContain("outcome=failed");
+    expect(last?.url).toContain("failure_code=issuer_unavailable");
+    expect(page.container.textContent).toContain("Failure signal: Issuer unavailable");
+    expect(page.container.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=issuer_unavailable");
+  });
+
+  it("offers a way back to Payment Health that survives a tab switch, and ignores any other return target", async () => {
+    mockFetch(handler);
+    const back = "/payment-health?period=last_7_days&channel=mobile_app";
+    page = await renderPage(<PaymentsPage />, `/payments?tab=attempts&outcome=failed&channel=mobile_app&return_to=${encodeURIComponent(back)}`);
+    await flush();
+    const link = () => Array.from(page!.container.querySelectorAll(".breadcrumb a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(link()?.getAttribute("href")).toBe(back);
+    const paymentsTab = Array.from(page.container.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments");
+    await click(paymentsTab ?? null);
+    await flush();
+    expect(link()?.getAttribute("href")).toBe(back);
+    page.unmount();
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, `/payments?return_to=${encodeURIComponent("https://example.com/")}`);
+    await flush();
+    expect(page.container.querySelector(".breadcrumb")).toBeNull();
+  });
+
   it("shows the empty state when nothing matches", async () => {
     mockFetch((url) => {
       if (url.startsWith("/api/payments?")) return { status: 200, body: { ...PAYMENTS, items: [], total: 0 } };

@@ -19,6 +19,11 @@ export const META: Meta = {
     { value: "failed", label: "Failed" },
     { value: "pending", label: "Pending" },
   ],
+  failure_codes: [
+    { value: "insufficient_funds", label: "Insufficient funds" },
+    { value: "do_not_honor", label: "Do not honor" },
+    { value: "issuer_unavailable", label: "Issuer unavailable" },
+  ],
   refund_statuses: [
     { value: "pending", label: "Pending" },
     { value: "succeeded", label: "Succeeded" },

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
+from app.core.labels import FAILURE_CODE_LABELS
 from app.core.tz import chicago_local
 
 RNG_SEED = 20261009
@@ -314,20 +315,8 @@ STREETS: tuple[str, ...] = ("Maple", "Harbor", "Cedar", "Willow", "Juniper", "Bi
 CARD_BRANDS: tuple[tuple[str, float], ...] = (("visa", 0.50), ("mastercard", 0.32), ("amex", 0.13), ("discover", 0.05))
 WALLET_TYPES: tuple[tuple[str, float], ...] = (("apple_pay", 0.65), ("google_pay", 0.35))
 
-# Human labels for recorded failure codes.
-DECLINE_CODES: dict[str, str] = {
-    "insufficient_funds": "Insufficient funds",
-    "do_not_honor": "Do not honor",
-    "incorrect_cvc": "Incorrect security code",
-    "expired_card": "Expired card",
-    "authentication_failed": "Authentication failed",
-    "card_velocity_exceeded": "Card velocity exceeded",
-    "fraud_suspected": "Suspected fraud",
-    "issuer_unavailable": "Issuer unavailable",
-    "processing_error": "Processing error",
-    "lost_or_stolen": "Card reported lost or stolen",
-    "incorrect_number": "Incorrect card number",
-}
+# Human labels for recorded failure codes; the one copy lives in core/labels.py.
+DECLINE_CODES: dict[str, str] = FAILURE_CODE_LABELS
 DECLINE_CODE_WEIGHTS: dict[str, float] = {
     "insufficient_funds": 0.30,
     "do_not_honor": 0.22,

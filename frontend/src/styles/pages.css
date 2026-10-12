@@ -577,6 +577,154 @@
   font-size: var(--text-md);
 }
 
+/* Payment Health */
+.health-loading {
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+.health-attention {
+  margin-bottom: var(--space-5);
+  border-left: 4px solid var(--color-neutral);
+}
+.health-attention-degraded {
+  border-left-color: var(--color-danger);
+}
+.health-attention-no_significant_degradation {
+  border-left-color: var(--color-success);
+}
+.health-attention .section-title .badge {
+  font-size: var(--text-md);
+}
+.health-attention .attention-empty + .attention-empty {
+  margin-top: var(--space-2);
+}
+.attention-degraded .attention-dot {
+  background: var(--color-danger);
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+.health-grid .chart-card {
+  margin-bottom: 0;
+}
+@media (max-width: 1100px) {
+  .health-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.health-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.health-recovery,
+.health-channels {
+  margin-bottom: var(--space-5);
+}
+.health-recovery .dl {
+  margin-bottom: var(--space-3);
+}
+.health-group-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.health-subvalue {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+}
+.health-unresolved {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-soft);
+}
+.health-unresolved .section-title {
+  font-size: var(--text-md);
+}
+.health-definitions dd {
+  color: var(--color-ink-secondary);
+}
+.row-selected td {
+  background: var(--color-accent-soft);
+}
+.row-selected:hover td {
+  background: var(--color-accent-soft);
+}
+.link-button {
+  all: unset;
+  cursor: pointer;
+  color: var(--color-accent);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.link-button:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+.link-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.link-button[aria-pressed="true"] {
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+.rate-chart .chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.rate-chart .chart-baseline line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.rate-chart .chart-point {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.rate-chart .chart-point-low {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.rate-chart .chart-hit {
+  fill: transparent;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+}
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+}
+.legend::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 2px solid var(--color-accent);
+}
+.legend-baseline::before {
+  border-top: 2px dashed var(--color-ink-faint);
+}
+.legend-low::before {
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+}
+
 /* Reports */
 .report-grid {
   display: grid;

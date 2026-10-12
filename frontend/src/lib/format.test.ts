@@ -1,5 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
+import {
+  chicagoDate,
+  daysUntil,
+  formatCents,
+  formatPointChange,
+  formatPoints,
+  formatRate,
+  formatRelative,
+  formatTimeFull,
+  formatTimestamp,
+  formatTimestampFull,
+  greetingFor,
+  parseDollarsToCents,
+} from "./format";
+
+describe("rates in basis points", () => {
+  it("formats a rate to one decimal, half-up, with integer math", () => {
+    expect(formatRate(9194)).toBe("91.9%");
+    expect(formatRate(9195)).toBe("92.0%");
+    expect(formatRate(7204)).toBe("72.0%");
+    expect(formatRate(10000)).toBe("100.0%");
+    expect(formatRate(0)).toBe("0.0%");
+    expect(formatRate(5)).toBe("0.1%");
+    expect(formatRate(null)).toBe("—");
+  });
+  it("formats a change with an explicit sign and an unsigned size", () => {
+    expect(formatPointChange(-1879)).toBe("−18.8 pts");
+    expect(formatPointChange(110)).toBe("+1.1 pts");
+    expect(formatPointChange(-4)).toBe("0.0 pts");
+    expect(formatPointChange(null)).toBe("—");
+    expect(formatPoints(1000)).toBe("10.0 pts");
+  });
+});
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
