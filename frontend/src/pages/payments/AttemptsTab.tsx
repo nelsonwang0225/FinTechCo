@@ -31,6 +31,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     outcome: query.get("outcome") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     sort,
     dir,
     page,
@@ -39,6 +40,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
   const { page: _page, page_size: _pageSize, ...exportParams } = params;
   const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
+
+  const failureSignals = useMemo(() => list.data?.failure_signals ?? [], [list.data]);
 
   const chips = useMemo<Chip[]>(() => {
     const out: Chip[] = [];
@@ -50,8 +53,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
     }
+    if (query.get("failure_code")) {
+      out.push({
+        key: "failure_code",
+        label: `Failure signal: ${label(failureSignals, query.get("failure_code"))}`,
+        onRemove: () => query.set({ failure_code: null }),
+      });
+    }
     return out;
-  }, [query, meta]);
+  }, [query, meta, failureSignals]);
 
   const columns: Column<AttemptListItem>[] = [
     {
@@ -92,6 +102,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           options={meta.channels}
           onChange={(v) => query.set({ channel: v, location_id: v === "in_store" ? query.get("location_id") : null })}
         />
+        {failureSignals.length > 0 ? (
+          <FilterSelect
+            id="attempts-failure-signal"
+            label="Failure signal"
+            value={query.get("failure_code")}
+            options={failureSignals}
+            onChange={(v) => query.set({ failure_code: v })}
+          />
+        ) : null}
         {meta.locations.length > 0 ? (
           <FilterSelect
             id="attempts-location"
@@ -102,7 +121,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null, failure_code: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (

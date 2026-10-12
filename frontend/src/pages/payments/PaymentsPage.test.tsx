@@ -91,4 +91,44 @@ describe("PaymentsPage", () => {
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
+
+  it("filters attempts by recorded failure signal from the URL and from the select", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=issuer_unavailable");
+    await flush();
+    const el = page.container;
+    const first = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(first?.url).toContain("outcome=failed");
+    expect(first?.url).toContain("failure_code=issuer_unavailable");
+    expect(el.textContent).toContain("Failure signal: Issuer unavailable");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=issuer_unavailable");
+    await setValue(el.querySelector("#attempts-failure-signal"), "insufficient_funds");
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("failure_code=insufficient_funds");
+    expect(el.textContent).toContain("Failure signal: Insufficient funds");
+  });
+
+  it("offers a way back to Payment Health that restores only the scope it came from", async () => {
+    mockFetch(handler);
+    const health = encodeURIComponent("period=month_to_date&channel=mobile_app&tab=attempts&evil=1");
+    page = await renderPage(<PaymentsPage />, `/payments?tab=attempts&period=month_to_date&channel=mobile_app&outcome=failed&health=${health}`);
+    await flush();
+    const el = page.container;
+    const back = () => Array.from(el.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+    // Changing filters and tabs here does not change where the way back goes.
+    await setValue(el.querySelector("#attempts-channel"), "website");
+    await flush();
+    const paymentsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments");
+    await click(paymentsTab ?? null);
+    await flush();
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+  });
+
+  it("has no Payment Health link when not opened from it", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?status=failed");
+    await flush();
+    expect(page.container.textContent).not.toContain("Back to Payment Health");
+  });
 });

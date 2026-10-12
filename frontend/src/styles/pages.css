@@ -577,6 +577,141 @@
   font-size: var(--text-md);
 }
 
+/* Payment health */
+.health-section {
+  margin-bottom: var(--space-5);
+}
+.health-attention {
+  margin-bottom: var(--space-5);
+  border-left: 4px solid var(--color-neutral);
+}
+.health-attention-danger {
+  border-left-color: var(--color-danger);
+}
+.health-attention-success {
+  border-left-color: var(--color-success);
+}
+.health-attention .section-title {
+  margin: 0 0 var(--space-2);
+}
+.health-attention-list,
+.health-not-evaluated {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.health-not-evaluated {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-soft);
+  font-size: var(--text-md);
+  color: var(--color-ink-secondary);
+}
+.health-attention .attention-detail {
+  color: var(--color-ink-secondary);
+}
+.health-more {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+}
+tr:has(.channel-link[aria-current="true"]) td {
+  background: var(--color-accent-soft);
+}
+.channel-link[aria-current="true"] {
+  font-weight: 600;
+}
+.health-definitions summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.health-definitions dl {
+  margin: var(--space-3) 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+.health-definition dt {
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+.health-definition dd {
+  margin: 2px 0 0;
+  font-size: var(--text-md);
+  color: var(--color-ink-secondary);
+}
+.rate-chart .chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.rate-chart .chart-point circle {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.rate-chart .chart-point-low circle {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.rate-chart .chart-gap line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 2;
+}
+.rate-chart .chart-baseline line {
+  stroke: var(--color-ink-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.rate-chart .chart-hit {
+  fill: transparent;
+}
+.rate-chart .chart-point:hover circle {
+  stroke-width: 3;
+}
+.chart-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+}
+.legend-line {
+  border-top: 2px solid var(--color-accent);
+  height: 0;
+}
+.legend-baseline {
+  border-top: 2px dashed var(--color-ink-muted);
+  height: 0;
+}
+.legend-low {
+  width: 10px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+}
+.legend-gap {
+  width: 8px;
+  border-top: 2px solid var(--color-ink-faint);
+  height: 0;
+}
+
 /* Reports */
 .report-grid {
   display: grid;

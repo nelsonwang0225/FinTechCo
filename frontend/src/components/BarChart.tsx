@@ -17,7 +17,7 @@ export function niceCeiling(max: number): number {
 const DEFAULT_WIDTH = 720;
 
 /** The rendered width of the chart's container, so the SVG draws at 1:1 and labels keep their type size. */
-function useContainerWidth(): [RefObject<HTMLDivElement | null>, number] {
+export function useContainerWidth(): [RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   useEffect(() => {

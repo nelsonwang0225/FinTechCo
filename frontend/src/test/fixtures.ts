@@ -125,6 +125,10 @@ export const ATTEMPTS: AttemptListResponse = {
   page_size: 25,
   total: 1,
   period: PERIOD,
+  failure_signals: [
+    { value: "insufficient_funds", label: "Insufficient funds" },
+    { value: "issuer_unavailable", label: "Issuer unavailable" },
+  ],
 };
 
 export const ANCHOR_DETAIL: PaymentDetail = {

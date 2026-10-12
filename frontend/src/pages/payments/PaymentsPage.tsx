@@ -1,9 +1,12 @@
+import { Link } from "react-router-dom";
 import type { Meta } from "../../api/types";
 import { useApi } from "../../api/useApi";
 import { Tabs } from "../../components/Tabs";
 import { ErrorState, LoadingState } from "../../components/states";
+import { IconChevronLeft } from "../../layout/icons";
 import { PageHeader } from "../../layout/PageHeader";
 import { useQueryState } from "../../lib/query";
+import { healthBackHref } from "../payment-health/scope";
 import { AttemptsTab } from "./AttemptsTab";
 import { PaymentsTab } from "./PaymentsTab";
 
@@ -16,15 +19,28 @@ export function PaymentsPage() {
   const query = useQueryState();
   const meta = useApi<Meta>("/api/meta");
   const tab = query.get("tab", "payments") === "attempts" ? "attempts" : "payments";
+  // Arrived from Payment Health: the way back restores the scope it was opened with, whatever filters change here.
+  const health = query.get("health");
 
   return (
     <>
-      <PageHeader title="Payments" subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago." />
+      <PageHeader
+        title="Payments"
+        subtitle="Search and investigate payment activity across channels. Times are shown in America/Chicago."
+        above={
+          health ? (
+            <Link to={healthBackHref(health)}>
+              <IconChevronLeft />
+              Back to Payment Health
+            </Link>
+          ) : undefined
+        }
+      />
       <Tabs
         tabs={TABS}
         active={tab}
         label="Payments views"
-        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, sort: null, dir: null })}
+        onChange={(id) => query.set({ tab: id === "payments" ? null : id, status: null, outcome: null, failure_code: null, sort: null, dir: null })}
       />
       {meta.loading && !meta.data ? <LoadingState rows={4} /> : null}
       {meta.error ? <ErrorState error={meta.error} onRetry={meta.reload} /> : null}
