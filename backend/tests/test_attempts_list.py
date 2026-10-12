@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import sqlite3
 
+from typing import get_args
+
 import pytest
 
+from app.api.attempts import FailureCode
+from app.core.labels import FAILURE_CODE_LABELS
 from tests.conftest import Ids, assert_scoped
 
 LAST_30 = "period=last_30_days"
@@ -21,7 +25,7 @@ def count(conn: sqlite3.Connection, merchant_id: str, extra: str = "", params: d
 
 def test_list_shape_has_total_and_period(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
     body = client_as("maya").get(f"/api/attempts?{LAST_30}").json()
-    assert set(body) == {"items", "page", "page_size", "total", "period"}
+    assert set(body) == {"items", "page", "page_size", "total", "period", "failure_signal_options"}
     assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"))
     assert body["period"]["preset"] == "last_30_days"
     assert_scoped(ids, body, ids.merchant("alder-loom"))
@@ -82,3 +86,28 @@ def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:
     body = client_as("priya").get(f"/api/attempts?{LAST_30}&page_size=50").json()
     assert body["total"] > 0
     assert_scoped(ids, body, ids.merchant("juniper-trail"))
+
+
+def test_failure_signal_options_are_labelled_codes(client_as) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&page_size=1").json()
+    assert body["failure_signal_options"] == [{"value": code, "label": label} for code, label in FAILURE_CODE_LABELS.items()]
+
+
+@pytest.mark.parametrize("code", ["insufficient_funds", "issuer_unavailable", "lost_or_stolen"])
+def test_failure_code_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&outcome=failed&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND a.failure_code = :f", {"f": code})
+    assert all(i["failure_code"] == code and i["outcome"] == "failed" for i in body["items"])
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+
+
+def test_failure_code_filter_rejects_unknown_codes_and_stays_scoped(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
+    assert client_as("maya").get("/api/attempts?failure_code=declined").status_code == 422
+    assert client_as("maya").get("/api/attempts?failure_code=issuer_unavailable%25").status_code == 422
+    body = client_as("priya").get(f"/api/attempts?{LAST_30}&failure_code=insufficient_funds&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("juniper-trail"), "AND a.failure_code = 'insufficient_funds'")
+    assert_scoped(ids, body, ids.merchant("juniper-trail"))
+
+
+def test_failure_code_literal_matches_labels() -> None:
+    assert get_args(FailureCode) == tuple(FAILURE_CODE_LABELS)

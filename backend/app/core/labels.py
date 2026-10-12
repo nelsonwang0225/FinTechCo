@@ -29,6 +29,26 @@ DISPUTE_REASON_LABELS: dict[str, str] = {
     "credit_not_processed": "Credit not processed",
 }
 PAYOUT_STATUS_LABELS: dict[str, str] = {"in_transit": "In transit", "paid": "Paid"}
+FAILURE_CODE_LABELS: dict[str, str] = {
+    "insufficient_funds": "Insufficient funds",
+    "do_not_honor": "Do not honor",
+    "incorrect_cvc": "Incorrect security code",
+    "expired_card": "Expired card",
+    "authentication_failed": "Authentication failed",
+    "card_velocity_exceeded": "Card velocity exceeded",
+    "fraud_suspected": "Suspected fraud",
+    "issuer_unavailable": "Issuer unavailable",
+    "processing_error": "Processing error",
+    "lost_or_stolen": "Card reported lost or stolen",
+    "incorrect_number": "Incorrect card number",
+}
+HEALTH_ASSESSMENT_LABELS: dict[str, str] = {
+    "degraded": "Degraded",
+    "within_baseline": "Within baseline",
+    "insufficient_period_volume": "Not enough completed attempts",
+    "insufficient_baseline": "Not enough baseline history",
+    "no_completed_attempts": "No completed attempts",
+}
 MOVEMENT_TYPE_LABELS: dict[str, str] = {
     "charge": "Collection",
     "fee": "Fee",

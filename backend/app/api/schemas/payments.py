@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from app.api.schemas.common import ApiModel
+from app.api.schemas.common import ApiModel, Option
 
 
 class PeriodInfo(ApiModel):
@@ -89,6 +89,7 @@ class AttemptListResponse(ApiModel):
     page_size: int
     total: int
     period: PeriodInfo
+    failure_signal_options: list[Option]
 
 
 class RefundItem(ApiModel):

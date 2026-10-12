@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from tests.conftest import Ids
+from app.core import clock, periods
+from tests.conftest import Ids, assert_scoped
 
 # (persona, route template, slug whose id is foreign to that persona, path parameter)
 CASES: list[tuple[str, str, str, str]] = [
@@ -56,3 +57,27 @@ def test_the_same_id_is_found_by_its_own_merchant(client_as, ids: Ids) -> None:
     own = ids.sample("juniper-trail", "payment_id")
     assert client_as("priya").get(f"/api/payments/{own}").status_code == 200
     assert client_as("maya").get(f"/api/payments/{own}").status_code == 404
+
+
+def test_payment_health_is_scoped_to_the_session_merchant(client_as, ids: Ids, seeded_conn) -> None:
+    """A collection endpoint with no ids: each merchant's aggregates equal SQL over its own rows only."""
+    p = periods.resolve("last_30_days", clock.now(seeded_conn))
+    seen = {}
+    for persona, slug in (("maya", "alder-loom"), ("priya", "juniper-trail"), ("sam_copper", "copper-finch")):
+        body = client_as(persona).get("/api/payment-health?period=last_30_days").json()
+        merchant_id = ids.merchant(slug)
+        expected = dict(seeded_conn.execute(
+            "SELECT outcome, COUNT(*) FROM payment_attempt WHERE merchant_id = ? AND created_at >= ? AND created_at < ? GROUP BY outcome",
+            (merchant_id, p.start, p.end),
+        ).fetchall())
+        s = body["summary"]
+        assert (s["succeeded"], s["failed"], s["pending"]) == (expected.get("succeeded", 0), expected.get("failed", 0), expected.get("pending", 0))
+        affected = seeded_conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(amount_cents), 0) FROM payment p WHERE p.merchant_id = ? AND p.created_at >= ? AND p.created_at < ? "
+            "AND EXISTS (SELECT 1 FROM payment_attempt a WHERE a.payment_id = p.id AND a.outcome = 'failed')",
+            (merchant_id, p.start, p.end),
+        ).fetchone()
+        assert (body["recovery"]["affected"]["payments"], body["recovery"]["affected"]["amount_cents"]) == tuple(affected)
+        assert_scoped(ids, body, merchant_id)
+        seen[slug] = (s["succeeded"], s["failed"], body["recovery"]["affected"]["amount_cents"])
+    assert len(set(seen.values())) == 3, seen
