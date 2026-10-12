@@ -92,3 +92,56 @@ describe("PaymentsPage", () => {
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
 });
+
+describe("PaymentsPage drill-down from Payment Health", () => {
+  const withSignals: Handler = (url) => {
+    if (url === "/api/attempts/failure-signals") {
+      return { status: 200, body: { options: [{ value: "issuer_unavailable", label: "Issuer unavailable" }, { value: "do_not_honor", label: "Do not honor" }] } };
+    }
+    return handler(url, undefined);
+  };
+
+  it("filters attempts by recorded failure signal, names it in a chip and exports the same filter", async () => {
+    const { calls } = mockFetch(withSignals);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&period=last_7_days&outcome=failed&channel=mobile_app&failure_code=issuer_unavailable");
+    await flush();
+    const el = page.container;
+    const list = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(list?.url).toContain("outcome=failed&failure_code=issuer_unavailable&channel=mobile_app");
+    expect(el.textContent).toContain("Recorded signal: Issuer unavailable");
+    expect(el.querySelector<HTMLSelectElement>("#attempts-failure-code")?.value).toBe("issuer_unavailable");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toBe(
+      "/api/reports/attempts.csv?period=last_7_days&outcome=failed&failure_code=issuer_unavailable&channel=mobile_app&sort=created_at&dir=desc",
+    );
+  });
+
+  it("choosing a recorded signal also narrows to failed attempts", async () => {
+    const { calls } = mockFetch(withSignals);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
+    await flush();
+    await setValue(page.container.querySelector("#attempts-failure-code"), "do_not_honor");
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("outcome=failed&failure_code=do_not_honor");
+  });
+
+  it("offers a way back to Payment Health with the original scope, even after the filters change", async () => {
+    mockFetch(withSignals);
+    page = await renderPage(
+      <PaymentsPage />,
+      "/payments?period=custom&from=2026-10-01&to=2026-10-02&status=failed&channel=mobile_app&ph_period=custom&ph_from=2026-10-01&ph_to=2026-10-02&ph_channel=mobile_app",
+    );
+    await flush();
+    const back = () => Array.from(page!.container.querySelectorAll("a")).find((a) => a.textContent === "Back to Payment Health");
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app");
+    await setValue(page.container.querySelector("#payments-status"), "succeeded");
+    await flush();
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=custom&from=2026-10-01&to=2026-10-02&channel=mobile_app");
+  });
+
+  it("shows no back link when the visit did not start on Payment Health", async () => {
+    mockFetch(withSignals);
+    page = await renderPage(<PaymentsPage />, "/payments?status=failed");
+    await flush();
+    expect(page.container.textContent).not.toContain("Back to Payment Health");
+  });
+});

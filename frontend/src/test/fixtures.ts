@@ -1,3 +1,4 @@
+import type { PaymentHealth } from "../api/payment-health-types";
 import type { AttemptListResponse, PaymentDetail, PaymentListResponse } from "../api/payments-types";
 import type { Meta } from "../api/types";
 
@@ -199,4 +200,79 @@ export const ANCHOR_DETAIL: PaymentDetail = {
     { kind: "note", at: "2026-09-26T15:40:12Z", title: "Note by Maya Chen", detail: "Customer called about a second charge.", upcoming: false, amount_cents: null, ref_id: "evt_anchor00000001" },
     { kind: "payout_paid", at: "2026-09-28T14:00:00Z", title: "Payout paid", detail: "Arrived at the bank account", upcoming: false, amount_cents: null, ref_id: "po_anchor000000001" },
   ],
+};
+
+const SUMMARY_ZERO = {
+  succeeded: 0, failed: 0, pending: 0, completed: 0, success_rate_bp: null, baseline_succeeded: 0, baseline_failed: 0, baseline_completed: 0,
+  baseline_success_rate_bp: null, change_bp: null,
+};
+
+/** Payment Health for Alder & Loom, last 7 days, all channels: the seeded mobile-app incident (figures from the seed). */
+export const HEALTH: PaymentHealth = {
+  as_of: "2026-10-05T14:12:00Z",
+  period: PERIOD,
+  baseline: { from_date: "2026-08-30", to_date: "2026-09-28", range_label: "Aug 30 – Sep 28, 2026" },
+  channel: null,
+  channel_label: "All channels",
+  rules: { baseline_days: 30, degraded_drop_bp: 1000, min_completed_attempts: 20, low_volume_day_attempts: 10, recovery_window_seconds: 3600 },
+  attention: {
+    status: "degraded",
+    degraded: [
+      { channel: "mobile_app", channel_label: "Mobile app", success_rate_bp: 7204, baseline_success_rate_bp: 9079, change_bp: -1875, failed_attempts: 52, unresolved_payments: 16 },
+    ],
+    insufficient_volume_channels: [],
+  },
+  attempts: {
+    succeeded: 499, failed: 90, pending: 2, completed: 589, success_rate_bp: 8472, baseline_succeeded: 1903, baseline_failed: 182, baseline_completed: 2085,
+    baseline_success_rate_bp: 9127, change_bp: -655,
+  },
+  trend: [
+    { date: "2026-09-29", succeeded: 75, failed: 4, pending: 0, completed: 79, success_rate_bp: 9494, low_volume: false, partial: false },
+    { date: "2026-09-30", succeeded: 89, failed: 7, pending: 0, completed: 96, success_rate_bp: 9271, low_volume: false, partial: false },
+    { date: "2026-10-01", succeeded: 84, failed: 38, pending: 0, completed: 122, success_rate_bp: 6885, low_volume: false, partial: false },
+    { date: "2026-10-02", succeeded: 81, failed: 18, pending: 0, completed: 99, success_rate_bp: 8182, low_volume: false, partial: false },
+    { date: "2026-10-03", succeeded: 96, failed: 9, pending: 0, completed: 105, success_rate_bp: 9143, low_volume: false, partial: false },
+    { date: "2026-10-04", succeeded: 62, failed: 13, pending: 0, completed: 75, success_rate_bp: 8267, low_volume: false, partial: false },
+    { date: "2026-10-05", succeeded: 12, failed: 1, pending: 2, completed: 13, success_rate_bp: 9231, low_volume: false, partial: true },
+  ],
+  channels: [
+    { ...SUMMARY_ZERO, channel: "website", channel_label: "Website", succeeded: 246, failed: 20, pending: 1, completed: 266, success_rate_bp: 9248,
+      baseline_succeeded: 969, baseline_failed: 91, baseline_completed: 1060, baseline_success_rate_bp: 9142, change_bp: 106, assessment: "not_degraded",
+      assessment_label: "No significant change" },
+    { ...SUMMARY_ZERO, channel: "mobile_app", channel_label: "Mobile app", succeeded: 134, failed: 52, pending: 1, completed: 186, success_rate_bp: 7204,
+      baseline_succeeded: 572, baseline_failed: 58, baseline_completed: 630, baseline_success_rate_bp: 9079, change_bp: -1875, assessment: "degraded",
+      assessment_label: "Degraded" },
+    { ...SUMMARY_ZERO, channel: "in_store", channel_label: "In store", succeeded: 119, failed: 18, pending: 0, completed: 137, success_rate_bp: 8686,
+      baseline_succeeded: 362, baseline_failed: 33, baseline_completed: 395, baseline_success_rate_bp: 9165, change_bp: -479, assessment: "not_degraded",
+      assessment_label: "No significant change" },
+  ],
+  failure_signals: [
+    { failure_code: "issuer_unavailable", label: "Issuer unavailable", failed_attempts: 32 },
+    { failure_code: "do_not_honor", label: "Do not honor", failed_attempts: 17 },
+    { failure_code: "insufficient_funds", label: "Insufficient funds", failed_attempts: 13 },
+  ],
+  recovery: {
+    affected_payments: 83, affected_cents: 2334007, recovered_payments: 55, recovered_cents: 1571734, recovered_within_window_payments: 55,
+    recovered_within_window_cents: 1571734, unresolved_payments: 28, unresolved_cents: 762273, retry_pending_payments: 0, retry_pending_cents: 0, currency: "USD",
+  },
+  unresolved: [
+    { id: "pay_unresolved00001", order_reference: "AL-12009", created_at: "2026-09-29T15:02:00Z", amount_cents: 12900, currency: "USD", channel: "website",
+      channel_label: "Website", attempt_count: 1, last_failure_code: "insufficient_funds", last_failure_label: "Insufficient funds",
+      customer: { id: "cus_taylorreed00001", full_name: "Taylor Reed", email: "taylor.reed@example.com", reference: "AL-C-0001" } },
+    { id: "pay_unresolved00002", order_reference: "AL-12183", created_at: "2026-10-01T22:40:00Z", amount_cents: 21800, currency: "USD", channel: "mobile_app",
+      channel_label: "Mobile app", attempt_count: 2, last_failure_code: "issuer_unavailable", last_failure_label: "Issuer unavailable", customer: null },
+  ],
+};
+
+/** A period with no completed attempts at all. */
+export const HEALTH_EMPTY: PaymentHealth = {
+  ...HEALTH,
+  attention: { status: "no_completed_attempts", degraded: [], insufficient_volume_channels: [] },
+  attempts: SUMMARY_ZERO,
+  trend: HEALTH.trend.map((d) => ({ ...d, succeeded: 0, failed: 0, pending: 0, completed: 0, success_rate_bp: null, low_volume: true })),
+  channels: [],
+  failure_signals: [],
+  recovery: { ...HEALTH.recovery, affected_payments: 0, affected_cents: 0, recovered_payments: 0, recovered_cents: 0, recovered_within_window_payments: 0,
+    recovered_within_window_cents: 0, unresolved_payments: 0, unresolved_cents: 0 },
+  unresolved: [],
 };
