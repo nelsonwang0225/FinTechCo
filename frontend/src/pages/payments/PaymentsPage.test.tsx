@@ -92,3 +92,51 @@ describe("PaymentsPage", () => {
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
 });
+
+describe("PaymentsPage from Payment Health", () => {
+  it("filters attempts by recorded failure signal, shows the chip, and exports with it", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=issuer_unavailable");
+    await flush();
+    const el = page.container;
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("failure_code=issuer_unavailable");
+    expect(el.textContent).toContain("Recorded signal: Issuer unavailable");
+    expect((el.querySelector("#attempts-signal") as HTMLSelectElement | null)?.value).toBe("issuer_unavailable");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=issuer_unavailable");
+    await setValue(el.querySelector("#attempts-signal"), "do_not_honor");
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("failure_code=do_not_honor");
+  });
+
+  it("shows a Back to Payment Health link that restores the original scope and survives filter changes", async () => {
+    const back = "/payment-health?period=month_to_date&channel=mobile_app";
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, `/payments?period=month_to_date&channel=mobile_app&status=failed&back=${encodeURIComponent(back)}`);
+    await flush();
+    const link = Array.from(page.container.querySelectorAll(".breadcrumb a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(link?.getAttribute("href")).toBe(back);
+    await setValue(page.container.querySelector("#payments-status"), "succeeded");
+    await flush();
+    expect(page.container.querySelector(".breadcrumb a")?.getAttribute("href")).toBe(back);
+  });
+
+  it("ignores a back link that is not a Payment Health path", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, `/payments?back=${encodeURIComponent("https://example.com")}`);
+    await flush();
+    expect(page.container.querySelector(".breadcrumb")).toBeNull();
+  });
+
+  it("clears the recorded signal when switching tabs", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&failure_code=issuer_unavailable");
+    await flush();
+    const paymentsTab = Array.from(page.container.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments");
+    await click(paymentsTab ?? null);
+    await flush();
+    const attemptsTab = Array.from(page.container.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Attempts");
+    await click(attemptsTab ?? null);
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).not.toContain("failure_code");
+  });
+});

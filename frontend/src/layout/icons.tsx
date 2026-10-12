@@ -39,6 +39,13 @@ export function IconPayouts(props: IconProps) {
     </Svg>
   );
 }
+export function IconHealth(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2.5 12h4l2.5-6 4 12 2.5-6h6" />
+    </Svg>
+  );
+}
 export function IconCustomers(props: IconProps) {
   return (
     <Svg {...props}>

@@ -630,3 +630,107 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Line chart (Payment health trend) */
+.chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.chart-reference line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.chart-point circle {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.chart-point-low circle {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.chart-hit {
+  fill: transparent;
+}
+.chart-point:hover .chart-hit {
+  fill: var(--color-accent-soft);
+  opacity: 0.35;
+}
+
+/* Payment health */
+.health-attention {
+  margin-bottom: var(--space-5);
+}
+.health-attention .attention-list {
+  margin-top: var(--space-2);
+}
+.attention-degraded .attention-dot {
+  background: var(--color-danger);
+}
+.attention-unassessed .attention-dot {
+  background: var(--color-neutral);
+}
+.health-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.health-definitions {
+  margin-top: var(--space-5);
+}
+.link-button {
+  all: unset;
+  cursor: pointer;
+  color: var(--color-accent);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button[aria-pressed="true"] {
+  color: var(--color-ink);
+}
+.link-button[aria-pressed="true"]::after {
+  content: " · selected";
+  font-weight: 400;
+  color: var(--color-ink-faint);
+}
+.row-selected td {
+  background: var(--color-accent-soft);
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-ink-faint);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-line,
+.legend-dash {
+  display: inline-block;
+  width: 18px;
+  border-top: 2px solid var(--color-accent);
+}
+.legend-dash {
+  border-top: 2px dashed var(--color-ink-faint);
+}
+.legend-hollow {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  background: var(--color-surface);
+}

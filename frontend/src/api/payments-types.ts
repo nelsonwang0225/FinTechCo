@@ -1,5 +1,5 @@
 // Wire types for payments, attempts and payment detail. Money is integer cents; timestamps are UTC ISO strings.
-import type { ListResponse } from "./types";
+import type { ListResponse, Option } from "./types";
 
 export interface PeriodInfo {
   preset: string;
@@ -81,6 +81,8 @@ export interface AttemptListItem extends AttemptItem {
 
 export interface AttemptListResponse extends ListResponse<AttemptListItem> {
   period: PeriodInfo;
+  /** Labelled recorded failure signals for the filter; not counts. */
+  failure_signal_options: Option[];
 }
 
 export interface RefundItem {
