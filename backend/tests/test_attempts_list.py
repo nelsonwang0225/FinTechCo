@@ -6,6 +6,7 @@ import sqlite3
 
 import pytest
 
+from app.core.labels import FAILURE_CODE_LABELS
 from tests.conftest import Ids, assert_scoped
 
 LAST_30 = "period=last_30_days"
@@ -21,7 +22,9 @@ def count(conn: sqlite3.Connection, merchant_id: str, extra: str = "", params: d
 
 def test_list_shape_has_total_and_period(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
     body = client_as("maya").get(f"/api/attempts?{LAST_30}").json()
-    assert set(body) == {"items", "page", "page_size", "total", "period"}
+    assert set(body) == {"items", "page", "page_size", "total", "period", "failure_signals"}
+    assert [o["value"] for o in body["failure_signals"]] == list(FAILURE_CODE_LABELS)
+    assert all(o["label"] == FAILURE_CODE_LABELS[o["value"]] for o in body["failure_signals"])
     assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"))
     assert body["period"]["preset"] == "last_30_days"
     assert_scoped(ids, body, ids.merchant("alder-loom"))
@@ -53,6 +56,25 @@ def test_channel_and_location_filters(client_as, seeded_conn: sqlite3.Connection
     location_id = ids.sample("alder-loom", "location_id")
     body = client_as("maya").get(f"/api/attempts?{LAST_30}&location_id={location_id}&page_size=5").json()
     assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND p.location_id = :l", {"l": location_id})
+
+
+@pytest.mark.parametrize("failure_code", ["issuer_unavailable", "insufficient_funds", "lost_or_stolen"])
+def test_failure_signal_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, failure_code: str) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&failure_code={failure_code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.failure_code = :f", {"f": failure_code})
+    assert all(i["failure_code"] == failure_code and i["outcome"] == "failed" for i in body["items"])
+    combined = client_as("maya").get(f"/api/attempts?{LAST_30}&outcome=failed&channel=mobile_app&failure_code={failure_code}&page_size=1").json()
+    assert combined["total"] == count(
+        seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND p.channel = 'mobile_app' AND a.failure_code = :f", {"f": failure_code}
+    )
+
+
+def test_unknown_failure_signal_is_422(client_as) -> None:
+    for value in ("not_a_code", "ISSUER_UNAVAILABLE", "issuer_unavailable%25"):
+        r = client_as("maya").get(f"/api/attempts?failure_code={value}")
+        assert r.status_code == 422, value
+        assert r.json()["error"]["code"] == "validation_error"
+    assert client_as("maya").get("/api/reports/attempts.csv?failure_code=not_a_code").status_code == 422
 
 
 def test_period_filters_on_the_attempt_timestamp(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
