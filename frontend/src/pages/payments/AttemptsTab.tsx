@@ -29,6 +29,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
     sort,
@@ -45,13 +46,19 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
     if (query.get("q")) out.push({ key: "q", label: `Search: ${query.get("q")}`, onRemove: () => query.set({ q: null }) });
     if (query.get("outcome")) out.push({ key: "outcome", label: `Outcome: ${label(meta.attempt_outcomes, query.get("outcome"))}`, onRemove: () => query.set({ outcome: null }) });
+    if (query.get("failure_code")) {
+      // Labelled from the rows themselves: every row in this filter carries the code's recorded message.
+      const code = query.get("failure_code");
+      const recorded = list.data?.items.find((a) => a.failure_code === code)?.failure_message ?? code.replace(/_/g, " ");
+      out.push({ key: "failure_code", label: `Recorded reason: ${recorded}`, onRemove: () => query.set({ failure_code: null }) });
+    }
     if (query.get("channel")) out.push({ key: "channel", label: `Channel: ${label(meta.channels, query.get("channel"))}`, onRemove: () => query.set({ channel: null }) });
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
     }
     return out;
-  }, [query, meta]);
+  }, [query, meta, list.data]);
 
   const columns: Column<AttemptListItem>[] = [
     {
@@ -102,7 +109,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, failure_code: null, channel: null, location_id: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (

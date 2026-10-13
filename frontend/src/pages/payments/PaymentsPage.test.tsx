@@ -91,4 +91,36 @@ describe("PaymentsPage", () => {
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
   });
+
+  it("filters attempts by a recorded failure code from the URL, with a removable chip labelled from the rows", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=insufficient_funds");
+    await flush();
+    const el = page.container;
+    const last = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(last?.url).toContain("outcome=failed&failure_code=insufficient_funds");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=insufficient_funds");
+    expect(el.textContent).toContain("Recorded reason: Insufficient funds");
+    const clear = Array.from(el.querySelectorAll("button")).find((b) => b.textContent === "Clear all");
+    await click(clear ?? null);
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).not.toContain("failure_code");
+  });
+
+  it("links back to Payment Health with the original scope, and ignores a return target outside it", async () => {
+    mockFetch(handler);
+    const back = encodeURIComponent("/payment-health?period=month_to_date&channel=mobile_app");
+    page = await renderPage(<PaymentsPage />, `/payments?status=failed&channel=mobile_app&return=${back}`);
+    await flush();
+    const link = Array.from(page.container.querySelectorAll("a")).find((a) => a.textContent === "Back to Payment Health");
+    expect(link?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+    await click(Array.from(page.container.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Attempts") ?? null);
+    await flush();
+    expect(Array.from(page.container.querySelectorAll("a")).some((a) => a.textContent === "Back to Payment Health")).toBe(true);
+    page.unmount();
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, `/payments?return=${encodeURIComponent("https://example.com/payment-health")}`);
+    await flush();
+    expect(Array.from(page.container.querySelectorAll("a")).some((a) => a.textContent === "Back to Payment Health")).toBe(false);
+  });
 });

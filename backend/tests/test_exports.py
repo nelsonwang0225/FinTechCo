@@ -89,6 +89,7 @@ ATTEMPT_CASES = [
     ("maya", "period=last_30_days&outcome=failed"),
     ("maya", "period=last_7_days&outcome=succeeded&channel=website"),
     ("maya", "period=last_30_days&channel=mobile_app"),
+    ("maya", "period=last_30_days&outcome=failed&failure_code=issuer_unavailable"),
     ("priya", "period=last_30_days&outcome=pending"),
     ("jordan", "period=last_30_days&q=AL-11404"),
 ]
@@ -107,6 +108,8 @@ def test_attempt_export_honours_filters_and_scope(client_as, ids: Ids, persona: 
             assert row["outcome"] == params["outcome"]
         if "channel" in params:
             assert row["channel"] == params["channel"]
+        if "failure_code" in params:
+            assert row["failure_code"] == params["failure_code"]
         if row["outcome"] == "failed":
             assert row["failure_code"] and row["failure_message"]
         else:

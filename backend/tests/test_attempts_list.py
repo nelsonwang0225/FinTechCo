@@ -55,6 +55,23 @@ def test_channel_and_location_filters(client_as, seeded_conn: sqlite3.Connection
     assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND p.location_id = :l", {"l": location_id})
 
 
+@pytest.mark.parametrize("code", ["issuer_unavailable", "insufficient_funds", "do_not_honor"])
+def test_failure_code_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    c = client_as("maya")
+    body = c.get(f"/api/attempts?{LAST_30}&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.failure_code = :f", {"f": code}) > 0
+    assert all(i["outcome"] == "failed" and i["failure_code"] == code for i in body["items"])
+    combined = c.get(f"/api/attempts?{LAST_30}&outcome=failed&failure_code={code}&channel=mobile_app&page_size=1").json()
+    assert combined["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.outcome = 'failed' AND a.failure_code = :f AND p.channel = 'mobile_app'", {"f": code})
+    assert c.get(f"/api/attempts?{LAST_30}&outcome=succeeded&failure_code={code}").json()["total"] == 0
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+
+
+def test_unknown_failure_code_is_422(client_as) -> None:
+    r = client_as("maya").get("/api/attempts?failure_code=declined")
+    assert r.status_code == 422 and r.json()["error"]["code"] == "validation_error"
+
+
 def test_period_filters_on_the_attempt_timestamp(client_as, seeded_conn: sqlite3.Connection, ids: Ids) -> None:
     body = client_as("maya").get("/api/attempts?from=2026-09-22&to=2026-09-22&page_size=100&sort=created_at&dir=asc").json()
     expected = seeded_conn.execute(

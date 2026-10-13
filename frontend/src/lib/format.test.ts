@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
+import {
+  chicagoDate,
+  daysUntil,
+  formatCents,
+  formatPointChange,
+  formatRate,
+  formatRelative,
+  formatTimeFull,
+  formatTimestamp,
+  formatTimestampFull,
+  greetingFor,
+  parseDollarsToCents,
+} from "./format";
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
@@ -48,5 +60,23 @@ describe("timestamps are rendered in America/Chicago", () => {
     expect(greetingFor("2026-10-05T14:12:00Z")).toBe("Good morning");
     expect(greetingFor("2026-10-05T20:12:00Z")).toBe("Good afternoon");
     expect(greetingFor("2026-10-06T01:12:00Z")).toBe("Good evening");
+  });
+});
+
+describe("formatRate and formatPointChange", () => {
+  it("renders integer basis points with one decimal, half-up, and a dash when there is no rate", () => {
+    expect(formatRate(8472)).toBe("84.7%");
+    expect(formatRate(8475)).toBe("84.8%");
+    expect(formatRate(10000)).toBe("100.0%");
+    expect(formatRate(0)).toBe("0.0%");
+    expect(formatRate(6)).toBe("0.1%");
+    expect(formatRate(null)).toBe("—");
+  });
+
+  it("signs a change in percentage points", () => {
+    expect(formatPointChange(-1875)).toBe("−18.8 pts");
+    expect(formatPointChange(106)).toBe("+1.1 pts");
+    expect(formatPointChange(4)).toBe("0.0 pts");
+    expect(formatPointChange(null)).toBe("—");
   });
 });

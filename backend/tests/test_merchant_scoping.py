@@ -6,9 +6,11 @@ route appends its cases to CASES.
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
-from tests.conftest import Ids
+from tests.conftest import Ids, assert_scoped
 
 # (persona, route template, slug whose id is foreign to that persona, path parameter)
 CASES: list[tuple[str, str, str, str]] = [
@@ -56,3 +58,57 @@ def test_the_same_id_is_found_by_its_own_merchant(client_as, ids: Ids) -> None:
     own = ids.sample("juniper-trail", "payment_id")
     assert client_as("priya").get(f"/api/payments/{own}").status_code == 200
     assert client_as("maya").get(f"/api/payments/{own}").status_code == 404
+
+
+# Collection and summary endpoints have no id to request, so their scope is checked by content: each merchant's figures
+# are its own, ids in the payload belong to it, and another merchant's rows changing leaves them untouched.
+
+APP_WINDOW = "/api/payment-health?period=custom&from=2026-10-01&to=2026-10-02"
+
+
+@pytest.mark.parametrize("persona,slug", [("maya", "alder-loom"), ("priya", "juniper-trail"), ("sam_copper", "copper-finch")])
+def test_payment_health_is_computed_from_the_merchants_own_attempts(client_as, ids: Ids, seeded_conn, persona: str, slug: str) -> None:
+    body = client_as(persona).get(APP_WINDOW).json()
+    merchant_id = ids.merchant(slug)
+    expected = seeded_conn.execute(
+        "SELECT COUNT(*) FROM payment_attempt WHERE merchant_id = ? AND created_at >= '2026-10-01T05:00:00Z' AND created_at < '2026-10-03T05:00:00Z'",
+        (merchant_id,),
+    ).fetchone()[0]
+    summary = body["summary"]["period"]
+    assert summary["completed"] + summary["pending"] == expected
+    assert_scoped(ids, body, merchant_id)
+    if slug != "alder-loom":
+        assert all(s["failure_code"] != "issuer_unavailable" or s["failed_attempts"] < 5 for s in body["failure_signals"]), "no Alder spike"
+
+
+def test_payment_health_unresolved_payments_never_cross_merchants(client_as, ids: Ids) -> None:
+    seen: dict[str, set[str]] = {}
+    for persona, slug in (("maya", "alder-loom"), ("priya", "juniper-trail"), ("sam_copper", "copper-finch")):
+        body = client_as(persona).get("/api/payment-health?period=last_30_days").json()
+        seen[slug] = {i["id"] for i in body["unresolved"]["items"]}
+        assert all(ids.owner_of[i] == ids.merchant(slug) for i in seen[slug])
+    assert not (seen["alder-loom"] & seen["juniper-trail"]) and not (seen["alder-loom"] & seen["copper-finch"])
+
+
+def test_another_merchants_failures_do_not_move_payment_health(client_as, ids: Ids, db_copy) -> None:
+    maya = client_as("maya")
+    before = maya.get(APP_WINDOW).json()
+    conn = sqlite3.connect(db_copy)
+    changed = conn.execute(
+        "UPDATE payment_attempt SET outcome = 'failed', failure_code = 'issuer_unavailable', failure_message = 'Issuer unavailable' "
+        "WHERE merchant_id = ? AND outcome = 'succeeded' AND created_at >= '2026-10-01T05:00:00Z' AND created_at < '2026-10-03T05:00:00Z'",
+        (ids.merchant("juniper-trail"),),
+    ).rowcount
+    conn.commit()
+    conn.close()
+    assert changed > 0
+    assert maya.get(APP_WINDOW).json() == before
+    priya = client_as("priya").get(APP_WINDOW).json()
+    assert priya["summary"]["period"]["succeeded"] == 0, "the change is visible to its own merchant"
+
+
+def test_failure_code_filtered_attempts_stay_in_the_merchant(client_as, ids: Ids) -> None:
+    for persona, slug in (("maya", "alder-loom"), ("priya", "juniper-trail")):
+        body = client_as(persona).get("/api/attempts?period=last_30_days&failure_code=insufficient_funds&page_size=100").json()
+        assert body["total"] > 0
+        assert_scoped(ids, body, ids.merchant(slug))
