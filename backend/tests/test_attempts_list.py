@@ -82,3 +82,18 @@ def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:
     body = client_as("priya").get(f"/api/attempts?{LAST_30}&page_size=50").json()
     assert body["total"] > 0
     assert_scoped(ids, body, ids.merchant("juniper-trail"))
+
+
+@pytest.mark.parametrize("persona,slug,code", [("maya", "alder-loom", "issuer_unavailable"), ("maya", "alder-loom", "insufficient_funds"),
+                                               ("priya", "juniper-trail", "do_not_honor")])
+def test_failure_code_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, persona: str, slug: str, code: str) -> None:
+    body = client_as(persona).get(f"/api/attempts?{LAST_30}&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant(slug), "AND a.failure_code = :f", {"f": code}) > 0
+    assert all(i["failure_code"] == code and i["outcome"] == "failed" for i in body["items"])
+    assert_scoped(ids, body, ids.merchant(slug))
+
+
+def test_failure_code_must_be_a_recorded_signal(client_as) -> None:
+    c = client_as("maya")
+    assert c.get("/api/attempts?failure_code=declined").status_code == 422
+    assert c.get("/api/attempts?failure_code=").status_code == 422

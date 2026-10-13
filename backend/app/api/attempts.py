@@ -10,10 +10,12 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.listing import page_params, period_info, resolve_period
 from app.api.payments import customer_ref, location_ref, method_info
+from app.api.schemas.common import Option
+from app.api.schemas.payment_health import FailureSignalOptions
 from app.api.schemas.payments import AttemptListItem, AttemptListResponse
 from app.auth.permissions import require
 from app.auth.session import Principal
-from app.core.labels import ATTEMPT_OUTCOME_LABELS, CHANNEL_LABELS
+from app.core.labels import ATTEMPT_OUTCOME_LABELS, CHANNEL_LABELS, FAILURE_CODE_LABELS
 from app.db.connection import get_conn
 from app.db.queries import attempts as attempts_q
 from app.db.queries.common import Page
@@ -25,6 +27,19 @@ Outcome = Literal["succeeded", "failed", "pending"]
 AttemptSort = Literal["created_at", "amount", "outcome", "order_reference"]
 Direction = Literal["asc", "desc"]
 Preset = Literal["last_7_days", "last_30_days", "month_to_date", "custom"]
+FailureCode = Literal[
+    "insufficient_funds",
+    "do_not_honor",
+    "incorrect_cvc",
+    "expired_card",
+    "authentication_failed",
+    "card_velocity_exceeded",
+    "fraud_suspected",
+    "issuer_unavailable",
+    "processing_error",
+    "lost_or_stolen",
+    "incorrect_number",
+]
 
 
 def attempt_list_item(row: sqlite3.Row) -> AttemptListItem:
@@ -63,12 +78,27 @@ def list_attempts(
     outcome: Outcome | None = None,
     channel: Channel | None = None,
     location_id: str | None = Query(None, max_length=40),
+    failure_code: FailureCode | None = None,
     sort: AttemptSort = "created_at",
     direction: Direction = Query("desc", alias="dir"),
 ) -> AttemptListResponse:
     resolved = resolve_period(conn, period, from_date, to_date)
     filters = attempts_q.AttemptFilters(
-        start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id, sort=sort, direction=direction
+        start=resolved.start,
+        end=resolved.end,
+        search=q,
+        outcome=outcome,
+        channel=channel,
+        location_id=location_id,
+        failure_code=failure_code,
+        sort=sort,
+        direction=direction,
     )
     rows, total = attempts_q.list_attempts(principal.merchant_id, conn, filters, page)
     return AttemptListResponse(items=[attempt_list_item(r) for r in rows], page=page.page, page_size=page.page_size, total=total, period=period_info(resolved))
+
+
+@router.get("/failure-signals", response_model=FailureSignalOptions)
+def list_failure_signals(principal: Principal = Depends(require("payments:read"))) -> FailureSignalOptions:
+    """The recorded failure signals an attempt can carry, for the Attempts tab filter. A fixed table, not merchant data."""
+    return FailureSignalOptions(items=[Option(value=code, label=label) for code, label in FAILURE_CODE_LABELS.items()])
