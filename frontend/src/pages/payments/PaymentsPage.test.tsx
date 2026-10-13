@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ATTEMPTS, META, PAYMENTS } from "../../test/fixtures";
+import { ATTEMPTS, FAILURE_SIGNALS, META, PAYMENTS } from "../../test/fixtures";
 import { MAYA, SAM, mockFetch, type Handler } from "../../test/mockApi";
 import { click, flush, renderPage, setValue, type Rendered } from "../../test/render";
 import { PaymentsPage } from "./PaymentsPage";
@@ -16,6 +16,7 @@ const handler: Handler = (url) => {
   if (url === "/api/meta") return { status: 200, body: META };
   if (url.startsWith("/api/payments?")) return { status: 200, body: PAYMENTS };
   if (url.startsWith("/api/attempts?")) return { status: 200, body: ATTEMPTS };
+  if (url === "/api/attempts/failure-signals") return { status: 200, body: FAILURE_SIGNALS };
   return undefined;
 };
 
@@ -90,5 +91,49 @@ describe("PaymentsPage", () => {
     page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
+  });
+
+  it("filters attempts by recorded failure signal, shows it as a chip, exports it and drops it on leaving the tab", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=issuer_unavailable");
+    await flush();
+    const el = page.container;
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("failure_code=issuer_unavailable");
+    expect(el.textContent).toContain("Failure signal: Issuer unavailable");
+    expect((el.querySelector("#attempts-failure-code") as HTMLSelectElement).value).toBe("issuer_unavailable");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=issuer_unavailable");
+    await setValue(el.querySelector("#attempts-failure-code"), "insufficient_funds");
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).toContain("failure_code=insufficient_funds");
+    const paymentsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments");
+    await click(paymentsTab ?? null);
+    await flush();
+    const attemptsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Attempts");
+    await click(attemptsTab ?? null);
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).not.toContain("failure_code");
+  });
+
+  it("links back to Payment Health with the scope it came from, across tab switches", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?period=month_to_date&channel=mobile_app&status=failed&ph=period%3Dmonth_to_date%26channel%3Dmobile_app");
+    await flush();
+    const el = page.container;
+    const back = () => Array.from(el.querySelectorAll(".breadcrumb a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+    await setValue(el.querySelector("#payments-status"), "pending");
+    await flush();
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+    const attemptsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Attempts");
+    await click(attemptsTab ?? null);
+    await flush();
+    expect(back()?.getAttribute("href")).toBe("/payment-health?period=month_to_date&channel=mobile_app");
+  });
+
+  it("has no back link when it was not opened from Payment Health", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments");
+    await flush();
+    expect(page.container.textContent).not.toContain("Back to Payment Health");
   });
 });

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { queryString } from "../../api/client";
 import type { AttemptListItem, AttemptListResponse } from "../../api/payments-types";
-import type { Meta } from "../../api/types";
+import type { Meta, Option } from "../../api/types";
 import { useApi } from "../../api/useApi";
 import { ActiveFilters, type Chip } from "../../components/ActiveFilters";
 import { DataTable, type Column } from "../../components/DataTable";
@@ -25,12 +25,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
   const sort = query.get("sort", "created_at");
   const dir: "asc" | "desc" = query.get("dir", "desc") === "asc" ? "asc" : "desc";
   const page = query.getInt("page", 1);
+  const signals = useApi<{ items: Option[] }>("/api/attempts/failure-signals");
+  const signalOptions = useMemo(() => signals.data?.items ?? [], [signals.data]);
   const params = {
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     sort,
     dir,
     page,
@@ -50,8 +53,11 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
     }
+    if (query.get("failure_code")) {
+      out.push({ key: "failure_code", label: `Failure signal: ${label(signalOptions, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
+    }
     return out;
-  }, [query, meta]);
+  }, [query, meta, signalOptions]);
 
   const columns: Column<AttemptListItem>[] = [
     {
@@ -101,8 +107,15 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
             onChange={(v) => query.set({ location_id: v, channel: v ? "in_store" : query.get("channel") })}
           />
         ) : null}
+        <FilterSelect
+          id="attempts-failure-code"
+          label="Failure signal"
+          value={query.get("failure_code")}
+          options={signalOptions}
+          onChange={(v) => query.set({ failure_code: v, outcome: v ? "failed" : query.get("outcome") })}
+        />
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null, failure_code: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (

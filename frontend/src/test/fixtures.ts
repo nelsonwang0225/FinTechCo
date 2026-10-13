@@ -1,3 +1,4 @@
+import type { PaymentHealth } from "../api/payment-health-types";
 import type { AttemptListResponse, PaymentDetail, PaymentListResponse } from "../api/payments-types";
 import type { Meta } from "../api/types";
 
@@ -199,4 +200,78 @@ export const ANCHOR_DETAIL: PaymentDetail = {
     { kind: "note", at: "2026-09-26T15:40:12Z", title: "Note by Maya Chen", detail: "Customer called about a second charge.", upcoming: false, amount_cents: null, ref_id: "evt_anchor00000001" },
     { kind: "payout_paid", at: "2026-09-28T14:00:00Z", title: "Payout paid", detail: "Arrived at the bank account", upcoming: false, amount_cents: null, ref_id: "po_anchor000000001" },
   ],
+};
+
+export const FAILURE_SIGNALS = {
+  items: [
+    { value: "insufficient_funds", label: "Insufficient funds" },
+    { value: "issuer_unavailable", label: "Issuer unavailable" },
+  ],
+};
+
+const stats = (succeeded: number, failed: number, pending: number, success_rate_bp: number | null) => ({
+  succeeded,
+  failed,
+  pending,
+  completed: succeeded + failed,
+  success_rate_bp,
+});
+
+/** Alder & Loom, last 7 days: the app checkout is degraded, the other two channels are not. */
+export const HEALTH: PaymentHealth = {
+  period: PERIOD,
+  baseline_period: { preset: "custom", label: "Custom range", from_date: "2026-08-30", to_date: "2026-09-28", range_label: "Aug 30 – Sep 28, 2026" },
+  rules: { baseline_days: 30, degraded_drop_bp: 1000, min_period_completed: 50, min_baseline_completed: 200, low_volume_day_completed: 10, recovery_window_minutes: 60 },
+  summary: { channel: null, channel_label: "All channels", period: stats(504, 85, 2, 8557), baseline: stats(1910, 175, 1, 9161), change_bp: -604 },
+  attention: { verdict: "degraded", degraded_channels: ["mobile_app"] },
+  channels: [
+    { channel: "website", channel_label: "Website", period: stats(246, 20, 1, 9248), baseline: stats(969, 91, 1, 9142), change_bp: 106, verdict: "not_degraded", verdict_label: "No significant degradation" },
+    { channel: "mobile_app", channel_label: "Mobile app", period: stats(134, 52, 1, 7204), baseline: stats(572, 58, 0, 9079), change_bp: -1875, verdict: "degraded", verdict_label: "Degraded" },
+    { channel: "in_store", channel_label: "In store", period: stats(119, 18, 0, 8686), baseline: stats(362, 33, 0, 9165), change_bp: -479, verdict: "not_degraded", verdict_label: "No significant degradation" },
+  ],
+  trend: [
+    { day: "2026-10-01", succeeded: 80, failed: 21, pending: 0, completed: 101, success_rate_bp: 7921, low_volume: false },
+    { day: "2026-10-02", succeeded: 5, failed: 3, pending: 0, completed: 8, success_rate_bp: 6250, low_volume: true },
+    { day: "2026-10-03", succeeded: 0, failed: 0, pending: 1, completed: 0, success_rate_bp: null, low_volume: false },
+    { day: "2026-10-04", succeeded: 88, failed: 6, pending: 0, completed: 94, success_rate_bp: 9362, low_volume: false },
+  ],
+  failure_signals: [
+    { code: "issuer_unavailable", label: "Issuer unavailable", attempts: 31, payments: 28 },
+    { code: "insufficient_funds", label: "Insufficient funds", attempts: 20, payments: 19 },
+  ],
+  recovery: {
+    currency: "USD",
+    affected_payments: 70,
+    affected_cents: 1234567,
+    failed_attempts: 85,
+    recovered_payments: 58,
+    recovered_cents: 1000000,
+    recovered_within_window_payments: 57,
+    recovered_within_window_cents: 990000,
+    unresolved_payments: 12,
+    unresolved_cents: 234567,
+    retry_pending_payments: 0,
+    retry_pending_cents: 0,
+  },
+  unresolved_payments: [
+    {
+      id: "pay_unresolved0001",
+      order_reference: "AL-13020",
+      created_at: "2026-10-01T22:05:10Z",
+      amount_cents: 18999,
+      currency: "USD",
+      status: "failed",
+      status_label: "Failed",
+      channel: "mobile_app",
+      channel_label: "Mobile app",
+      location: null,
+      customer: { id: "cus_unresolved0001", full_name: "Robin Vale", email: "robin.vale@example.com", reference: "AL-C-0101" },
+      method: { type: "card", card_brand: "visa", card_last4: "4242", wallet_type: null, label: "Visa •••• 4242" },
+      refunded_cents: 0,
+      net_cents: 18999,
+      dispute_id: null,
+      dispute_status: null,
+    },
+  ],
+  unresolved_total: 12,
 };

@@ -179,6 +179,27 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/** Tenths of a percentage point from integer basis points, half away from zero, without floating point. */
+function tenthsOfPoint(bp: number): { negative: boolean; text: string } {
+  const abs = Math.abs(Math.trunc(bp));
+  const tenths = Math.floor((abs + 5) / 10);
+  return { negative: bp < 0 && tenths > 0, text: `${Math.floor(tenths / 10)}.${tenths % 10}` };
+}
+
+/** A rate in basis points as "72.0%"; "—" when there is no rate (nothing completed). */
+export function formatRateBp(bp: number | null): string {
+  if (bp === null) return "—";
+  return `${tenthsOfPoint(bp).text}%`;
+}
+
+/** A change in basis points as percentage points: "−18.8 pts", "+1.1 pts", "0.0 pts"; "—" when not comparable. */
+export function formatPointsBp(bp: number | null): string {
+  if (bp === null) return "—";
+  const { negative, text } = tenthsOfPoint(bp);
+  if (text === "0.0") return "0.0 pts";
+  return `${negative ? MINUS : "+"}${text} pts`;
+}
+
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
 export function nowMs(): number {
   return Date.now();
