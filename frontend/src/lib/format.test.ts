@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chicagoDate, daysUntil, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
+import { chicagoDate, daysUntil, formatBps, formatBpsChange, formatCents, formatRelative, formatTimeFull, formatTimestamp, formatTimestampFull, greetingFor, parseDollarsToCents } from "./format";
 
 describe("formatCents", () => {
   it("formats integer cents without floating point", () => {
@@ -8,6 +8,22 @@ describe("formatCents", () => {
     expect(formatCents(-4850)).toBe("−$48.50");
     expect(formatCents(-4850, { sign: false })).toBe("$48.50");
     expect(formatCents(100, { symbol: false })).toBe("1.00");
+  });
+});
+
+describe("formatBps", () => {
+  it("renders basis points as a percentage with integer half-up rounding and no fabricated rate", () => {
+    expect(formatBps(7204)).toBe("72.0%");
+    expect(formatBps(9079)).toBe("90.8%");
+    expect(formatBps(10000)).toBe("100.0%");
+    expect(formatBps(0)).toBe("0.0%");
+    expect(formatBps(null)).toBe("—");
+  });
+  it("renders a change in percentage points with an explicit sign", () => {
+    expect(formatBpsChange(-1875)).toBe("−18.8 pts");
+    expect(formatBpsChange(106)).toBe("+1.1 pts");
+    expect(formatBpsChange(4)).toBe("0.0 pts");
+    expect(formatBpsChange(null)).toBe("—");
   });
 });
 

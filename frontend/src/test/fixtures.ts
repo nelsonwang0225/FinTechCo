@@ -1,3 +1,4 @@
+import type { ChannelHealth, PaymentHealth } from "../api/payment-health-types";
 import type { AttemptListResponse, PaymentDetail, PaymentListResponse } from "../api/payments-types";
 import type { Meta } from "../api/types";
 
@@ -198,5 +199,79 @@ export const ANCHOR_DETAIL: PaymentDetail = {
     { kind: "refund_succeeded", at: "2026-09-26T15:12:00Z", title: "Refund of $48.00 completed", detail: "Price adjustment", upcoming: false, amount_cents: -4800, ref_id: "ref_anchor00000001" },
     { kind: "note", at: "2026-09-26T15:40:12Z", title: "Note by Maya Chen", detail: "Customer called about a second charge.", upcoming: false, amount_cents: null, ref_id: "evt_anchor00000001" },
     { kind: "payout_paid", at: "2026-09-28T14:00:00Z", title: "Payout paid", detail: "Arrived at the bank account", upcoming: false, amount_cents: null, ref_id: "po_anchor000000001" },
+  ],
+};
+
+const metrics = (succeeded: number, failed: number, pending: number, rate: number | null, failRate: number | null) => ({
+  succeeded,
+  failed,
+  pending,
+  completed: succeeded + failed,
+  success_rate_bps: rate,
+  failure_rate_bps: failRate,
+});
+
+const APP_HEALTH: ChannelHealth = {
+  channel: "mobile_app",
+  channel_label: "Mobile app",
+  period: metrics(134, 52, 1, 7204, 2796),
+  baseline: metrics(572, 58, 0, 9079, 921),
+  change_bps: -1875,
+  verdict: "degraded",
+  verdict_label: "Degraded",
+};
+
+/** Alder & Loom, last 7 days, all channels, using the seeded figures. */
+export const PAYMENT_HEALTH: PaymentHealth = {
+  period: PERIOD,
+  baseline_period: { preset: "custom", label: "Custom range", from_date: "2026-08-30", to_date: "2026-09-28", range_label: "Aug 30 – Sep 28, 2026" },
+  channel: null,
+  as_of: "2026-10-05T14:12:00Z",
+  rules: { baseline_days: 30, min_period_completed: 30, min_baseline_completed: 100, degraded_drop_bps: 500, low_volume_day_completed: 10, quick_recovery_minutes: 60 },
+  scope: { period: metrics(499, 90, 2, 8472, 1528), baseline: metrics(1903, 182, 0, 9127, 873), change_bps: -655 },
+  attention: { state: "degraded", degraded_channels: [APP_HEALTH], insufficient_channels: [] },
+  channels: [
+    { channel: "website", channel_label: "Website", period: metrics(246, 20, 1, 9248, 752), baseline: metrics(969, 91, 0, 9142, 858), change_bps: 106, verdict: "ok", verdict_label: "No significant degradation" },
+    APP_HEALTH,
+    { channel: "in_store", channel_label: "In store", period: metrics(119, 18, 0, 8686, 1314), baseline: metrics(362, 33, 0, 9165, 835), change_bps: -479, verdict: "ok", verdict_label: "No significant degradation" },
+  ],
+  trend: [
+    { day: "2026-09-29", succeeded: 80, failed: 6, pending: 0, success_rate_bps: 9302, low_volume: false, partial: false },
+    { day: "2026-09-30", succeeded: 0, failed: 0, pending: 0, success_rate_bps: null, low_volume: false, partial: false },
+    { day: "2026-10-01", succeeded: 60, failed: 35, pending: 0, success_rate_bps: 6316, low_volume: false, partial: false },
+    { day: "2026-10-05", succeeded: 5, failed: 1, pending: 2, success_rate_bps: 8333, low_volume: true, partial: true },
+  ],
+  failure_signals: [
+    { code: "issuer_unavailable", label: "Issuer unavailable", count: 32 },
+    { code: "do_not_honor", label: "Do not honor", count: 17 },
+  ],
+  recovery: {
+    affected_count: 83,
+    affected_cents: 2334007,
+    recovered_count: 55,
+    recovered_cents: 1571734,
+    recovered_within_hour_count: 55,
+    recovered_within_hour_cents: 1571734,
+    unresolved_count: 28,
+    unresolved_cents: 762273,
+    in_progress_count: 0,
+    in_progress_cents: 0,
+    currency: "USD",
+  },
+  unresolved_payments: [
+    {
+      id: "pay_unresolved0001",
+      order_reference: "AL-12001",
+      created_at: "2026-10-01T20:05:00Z",
+      amount_cents: 12999,
+      currency: "USD",
+      channel: "mobile_app",
+      channel_label: "Mobile app",
+      customer: { id: "cus_taylor00000001", full_name: "Taylor Reed", email: "taylor.reed@example.com", reference: "C-1001" },
+      failed_attempts: 2,
+      last_failure_code: "issuer_unavailable",
+      last_failure_label: "Issuer unavailable",
+      last_attempt_at: "2026-10-01T20:12:00Z",
+    },
   ],
 };

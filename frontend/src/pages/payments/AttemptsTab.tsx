@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { queryString } from "../../api/client";
+import type { FailureSignalsResponse } from "../../api/payment-health-types";
 import type { AttemptListItem, AttemptListResponse } from "../../api/payments-types";
+import type { Option } from "../../api/types";
 import type { Meta } from "../../api/types";
 import { useApi } from "../../api/useApi";
 import { ActiveFilters, type Chip } from "../../components/ActiveFilters";
@@ -29,6 +31,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
     sort,
@@ -37,6 +40,14 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     page_size: PAGE_SIZE,
   };
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
+  const signals = useApi<FailureSignalsResponse>(`/api/payment-health/failure-signals${queryString({ ...periodParams(query), channel: params.channel })}`);
+  const signalOptions = useMemo<Option[]>(() => {
+    const options = (signals.data?.signals ?? []).map((s) => ({ value: s.code, label: s.label }));
+    const selected = query.get("failure_code");
+    // Keep a linked-in signal selectable even when the current period recorded none of it.
+    if (selected && !options.some((o) => o.value === selected)) options.push({ value: selected, label: selected.replace(/_/g, " ") });
+    return options;
+  }, [signals.data, query]);
   const { page: _page, page_size: _pageSize, ...exportParams } = params;
   const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
 
@@ -45,13 +56,16 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
     if (query.get("q")) out.push({ key: "q", label: `Search: ${query.get("q")}`, onRemove: () => query.set({ q: null }) });
     if (query.get("outcome")) out.push({ key: "outcome", label: `Outcome: ${label(meta.attempt_outcomes, query.get("outcome"))}`, onRemove: () => query.set({ outcome: null }) });
+    if (query.get("failure_code")) {
+      out.push({ key: "failure_code", label: `Failure signal: ${label(signalOptions, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
+    }
     if (query.get("channel")) out.push({ key: "channel", label: `Channel: ${label(meta.channels, query.get("channel"))}`, onRemove: () => query.set({ channel: null }) });
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
     }
     return out;
-  }, [query, meta]);
+  }, [query, meta, signalOptions]);
 
   const columns: Column<AttemptListItem>[] = [
     {
@@ -86,6 +100,13 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
         <FilterSelect
+          id="attempts-failure"
+          label="Failure signal"
+          value={query.get("failure_code")}
+          options={signalOptions}
+          onChange={(v) => query.set({ failure_code: v, outcome: v ? "failed" : query.get("outcome") })}
+        />
+        <FilterSelect
           id="attempts-channel"
           label="Channel"
           value={query.get("channel")}
@@ -102,7 +123,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, failure_code: null, channel: null, location_id: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
         {can("reports:operational") ? (

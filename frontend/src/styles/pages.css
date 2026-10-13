@@ -630,3 +630,155 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Payment Health */
+.health-loading {
+  opacity: 0.7;
+}
+.health-attention {
+  margin-bottom: var(--space-5);
+  border-left: 4px solid var(--color-neutral);
+}
+.health-attention-degraded {
+  border-left-color: var(--color-danger);
+}
+.health-attention-ok {
+  border-left-color: var(--color-success);
+}
+.health-attention-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.health-attention-head .section-title {
+  margin: 0;
+}
+.health-attention-body,
+.health-evidence {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-base);
+}
+.health-evidence {
+  padding-left: var(--space-5);
+}
+.health-evidence li + li {
+  margin-top: var(--space-1);
+}
+.health-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-5);
+  margin: var(--space-5) 0;
+  align-items: start;
+}
+.health .card + section,
+.health .health-grid + section {
+  margin-top: var(--space-5);
+}
+.bucket-row-nested dt {
+  padding-left: var(--space-4);
+}
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+.link-button[aria-pressed="true"] {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.link-button[aria-pressed="true"]::after {
+  content: " · selected";
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+.chart-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.chart-baseline line {
+  stroke: var(--color-ink-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.chart-point circle {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.chart-point-low circle {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.chart-hit {
+  fill: transparent;
+}
+.chart-point:hover .chart-hit {
+  fill: var(--color-accent-soft);
+  fill-opacity: 0.5;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.legend-mark {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--space-1);
+}
+.legend-line {
+  width: 16px;
+  border-top: 2px solid var(--color-accent);
+}
+.legend-baseline {
+  width: 16px;
+  border-top: 2px dashed var(--color-ink-muted);
+}
+.legend-low {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+.health-definitions {
+  margin-top: var(--space-5);
+}
+.health-definitions summary {
+  cursor: pointer;
+  margin: 0;
+}
+.health-definitions dl {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-md);
+}
+.health-definitions dt {
+  margin-top: var(--space-3);
+  font-weight: 600;
+}
+.health-definitions dd {
+  margin: 2px 0 0;
+  color: var(--color-ink-secondary);
+}

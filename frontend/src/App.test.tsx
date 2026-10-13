@@ -59,7 +59,7 @@ describe("App", () => {
     const nav = el.querySelector("nav[aria-label='Sections']");
     expect(nav).not.toBeNull();
     const labels = Array.from(nav!.querySelectorAll("a")).map((a) => a.textContent);
-    expect(labels).toEqual(["Overview", "Payments", "Customers", "Disputes", "Reports"]);
+    expect(labels).toEqual(["Overview", "Payments", "Payment Health", "Customers", "Disputes", "Reports"]);
     expect(el.querySelector(".topbar-merchant-name")?.textContent).toBe("Alder & Loom");
     expect(el.textContent).toContain("Demo environment · Synthetic data");
     expect(el.textContent).toContain("Signed in as");

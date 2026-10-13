@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ATTEMPTS, META, PAYMENTS } from "../../test/fixtures";
+import { ATTEMPTS, META, PAYMENTS, PERIOD } from "../../test/fixtures";
 import { MAYA, SAM, mockFetch, type Handler } from "../../test/mockApi";
 import { click, flush, renderPage, setValue, type Rendered } from "../../test/render";
 import { PaymentsPage } from "./PaymentsPage";
@@ -90,5 +90,36 @@ describe("PaymentsPage", () => {
     page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
     await flush();
     expect(page.container.querySelector("a[data-export]")).toBeNull();
+  });
+
+  it("filters attempts by recorded failure signal, offers the signals from Payment Health and exports with the filter", async () => {
+    const signals = { period: PERIOD, channel: null, signals: [{ code: "issuer_unavailable", label: "Issuer unavailable", count: 32 }] };
+    const { calls } = mockFetch((url) => (url.startsWith("/api/payment-health/failure-signals?") ? { status: 200, body: signals } : handler(url, undefined)));
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts&outcome=failed&failure_code=issuer_unavailable&channel=mobile_app");
+    await flush();
+    const el = page.container;
+    const attemptsCall = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(attemptsCall?.url).toContain("failure_code=issuer_unavailable");
+    expect(calls.some((c) => c.url === "/api/payment-health/failure-signals?period=last_7_days&channel=mobile_app")).toBe(true);
+    expect(el.querySelector<HTMLSelectElement>("#attempts-failure")?.value).toBe("issuer_unavailable");
+    expect(el.textContent).toContain("Failure signal: Issuer unavailable");
+    expect(el.querySelector("a[data-export=attempts]")?.getAttribute("href")).toContain("failure_code=issuer_unavailable");
+    const paymentsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Payments");
+    await click(paymentsTab ?? null);
+    await flush();
+    expect(calls.filter((c) => c.url.startsWith("/api/payments?")).at(-1)?.url).not.toContain("failure_code");
+  });
+
+  it("links back to Payment Health with the original scope when opened from it", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?period=last_7_days&channel=mobile_app&status=failed&back=period%3Dlast_7_days");
+    await flush();
+    const back = Array.from(page.container.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(back?.getAttribute("href")).toBe("/payment-health?period=last_7_days");
+    page.unmount();
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments");
+    await flush();
+    expect(page.container.textContent).not.toContain("Back to Payment Health");
   });
 });

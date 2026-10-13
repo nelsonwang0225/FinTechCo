@@ -12,6 +12,10 @@ const TONES: Record<string, Tone> = {
   lost: "danger",
   needs_response: "danger",
   under_review: "warning",
+  degraded: "danger",
+  ok: "success",
+  insufficient_data: "neutral",
+  no_data: "neutral",
 };
 
 export function toneFor(status: string): Tone {
