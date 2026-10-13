@@ -179,6 +179,19 @@ export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/** A rate in basis points as a percentage with one decimal ("72.0%"), using integer math only. Null means no rate. */
+export function formatRate(bps: number | null): string {
+  if (bps === null) return "—";
+  const tenths = Math.round(bps / 10);
+  return `${Math.trunc(tenths / 10)}.${Math.abs(tenths % 10)}%`;
+}
+
+/** A difference in basis points as percentage points ("18.8 pp"). */
+export function formatPoints(bps: number): string {
+  const tenths = Math.round(Math.abs(bps) / 10);
+  return `${bps < 0 ? "−" : ""}${Math.trunc(tenths / 10)}.${tenths % 10} pp`;
+}
+
 /** Browser-clock read, isolated here on purpose (used only for a debounce timer id or similar, never for business dates). */
 export function nowMs(): number {
   return Date.now();

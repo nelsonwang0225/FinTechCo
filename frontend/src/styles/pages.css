@@ -630,3 +630,118 @@
   white-space: nowrap;
   vertical-align: bottom;
 }
+
+/* Payment Health */
+.health-attention {
+  margin-bottom: var(--space-5);
+  border-left: 4px solid var(--color-neutral);
+}
+.health-attention-danger {
+  border-left-color: var(--color-danger);
+}
+.health-attention-success {
+  border-left-color: var(--color-success);
+}
+.health-attention p {
+  margin: var(--space-2) 0 0;
+}
+.health-attention-list {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+.health-attention-list li + li {
+  margin-top: var(--space-1);
+}
+.health-section {
+  margin-top: var(--space-5);
+}
+.section-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button[aria-pressed="true"] {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.row-selected td {
+  background: var(--color-accent-soft);
+}
+.rate-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.rate-baseline {
+  stroke: var(--color-ink-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.rate-point {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+.rate-point-low {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.rate-point:focus-visible {
+  outline: none;
+  stroke: var(--color-focus);
+  stroke-width: 3;
+}
+.rate-gap {
+  fill: var(--color-ink-faint);
+  font-size: 11px;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-line,
+.legend-baseline {
+  display: inline-block;
+  width: 18px;
+  border-top: 2px solid var(--color-accent);
+}
+.legend-baseline {
+  border-top: 2px dashed var(--color-ink-muted);
+}
+.legend-low {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+.legend-gap {
+  color: var(--color-ink-faint);
+}
+.cards-5 {
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+}

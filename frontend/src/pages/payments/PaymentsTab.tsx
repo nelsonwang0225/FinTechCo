@@ -34,13 +34,15 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     location_id: query.get("location_id") || undefined,
     amount_min_cents: query.get("amount_min_cents") || undefined,
     amount_max_cents: query.get("amount_max_cents") || undefined,
+    recovery: query.get("recovery") || undefined,
     sort,
     dir,
     page,
     page_size: PAGE_SIZE,
   };
   const list = useApi<PaymentListResponse>(`/api/payments${queryString(params)}`);
-  const { page: _page, page_size: _pageSize, ...exportParams } = params;
+  // The payment register export has no recovery filter, so it is offered only when the list and the file would match.
+  const { page: _page, page_size: _pageSize, recovery: _recovery, ...exportParams } = params;
   const exportHref = `/api/reports/payments.csv${queryString(exportParams)}`;
 
   const chips = useMemo<Chip[]>(() => {
@@ -54,6 +56,7 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
       out.push({ key: "location", label: `Location: ${loc?.name ?? "Unknown"}`, onRemove: () => query.set({ location_id: null }) });
     }
     if (query.get("amount_min_cents")) out.push({ key: "min", label: `Min ${formatCents(Number(query.get("amount_min_cents")))}`, onRemove: () => query.set({ amount_min_cents: null }) });
+    if (query.get("recovery")) out.push({ key: "recovery", label: `Recovery: ${label(meta.payment_recovery, query.get("recovery"))} payments`, onRemove: () => query.set({ recovery: null }) });
     if (query.get("amount_max_cents")) out.push({ key: "max", label: `Max ${formatCents(Number(query.get("amount_max_cents")))}`, onRemove: () => query.set({ amount_max_cents: null }) });
     return out;
   }, [query, meta]);
@@ -108,10 +111,10 @@ export function PaymentsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <AmountInput id="payments-min" label="Min amount" cents={query.get("amount_min_cents")} onChange={(c) => query.set({ amount_min_cents: c })} />
         <AmountInput id="payments-max" label="Max amount" cents={query.get("amount_max_cents")} onChange={(c) => query.set({ amount_max_cents: c })} />
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, status: null, channel: null, location_id: null, amount_min_cents: null, amount_max_cents: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, status: null, channel: null, location_id: null, amount_min_cents: null, amount_max_cents: null, recovery: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
-        {can("reports:operational") ? (
+        {can("reports:operational") && !params.recovery ? (
           <a className="btn btn-sm" href={exportHref} download data-export="payments">
             <IconDownload />
             Export CSV

@@ -72,6 +72,10 @@ export interface Meta {
   channels: Option[];
   payment_statuses: Option[];
   attempt_outcomes: Option[];
+  /** Recorded failure signals on failed attempts (labels only, never counts). */
+  failure_signals: Option[];
+  /** Payment-level recovery groups used by Payment Health drill-downs. */
+  payment_recovery: Option[];
   refund_statuses: Option[];
   refund_reasons: Option[];
   dispute_statuses: Option[];

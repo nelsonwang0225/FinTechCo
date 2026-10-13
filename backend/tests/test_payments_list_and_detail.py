@@ -52,6 +52,26 @@ def test_status_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, sta
     assert body["items"] and all(i["status"] == status for i in body["items"])
 
 
+FAILED_ATTEMPT = "AND EXISTS (SELECT 1 FROM payment_attempt fa WHERE fa.payment_id = ps.id AND fa.merchant_id = ps.merchant_id AND fa.outcome = 'failed')"
+
+
+@pytest.mark.parametrize(
+    "recovery,extra",
+    [("affected", ""), ("recovered", "AND ps.succeeded_attempt_id IS NOT NULL"), ("unresolved", "AND ps.succeeded_attempt_id IS NULL")],
+)
+def test_recovery_filter_is_by_payment(client_as, seeded_conn: sqlite3.Connection, ids: Ids, recovery: str, extra: str) -> None:
+    body = client_as("maya").get(f"/api/payments?{LAST_30}&recovery={recovery}&page_size=100").json()
+    assert body["total"] == sql_count(seeded_conn, ids.merchant("alder-loom"), f"{FAILED_ATTEMPT} {extra}")
+    assert body["total"] > 0
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+    statuses = {i["status"] for i in body["items"]}
+    if recovery == "unresolved":
+        assert statuses <= {"failed", "pending"}
+    if recovery == "recovered":
+        assert not statuses & {"failed", "pending"}
+    assert client_as("maya").get("/api/payments?recovery=lost").status_code == 422
+
+
 @pytest.mark.parametrize("channel", ["website", "mobile_app", "in_store"])
 def test_channel_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, channel: str) -> None:
     body = client_as("maya").get(f"/api/payments?{LAST_30}&channel={channel}&page_size=5").json()

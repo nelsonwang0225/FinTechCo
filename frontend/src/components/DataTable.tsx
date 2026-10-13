@@ -27,6 +27,8 @@ export interface DataTableProps<Row> {
   onSort?: (sortKey: string) => void;
   onRowClick?: (row: Row) => void;
   rowHref?: (row: Row) => string | undefined;
+  /** Extra class on a row, e.g. to mark the selected one. */
+  rowClassName?: (row: Row) => string | undefined;
   loading?: boolean;
 }
 
@@ -40,7 +42,7 @@ function cellClass<Row>(col: Column<Row>): string | undefined {
  * Row navigation is a real link in the first cell (keyboard reachable) plus an optional whole-row click.
  * Headers stick below the top bar while a long table scrolls.
  */
-export function DataTable<Row>({ columns, rows, rowKey, caption, sort, onSort, onRowClick, loading }: DataTableProps<Row>) {
+export function DataTable<Row>({ columns, rows, rowKey, caption, sort, onSort, onRowClick, rowClassName, loading }: DataTableProps<Row>) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [scrolls, setScrolls] = useState(false);
   // When the table is wider than its container, let the wrap scroll sideways so no column becomes unreachable.
@@ -86,7 +88,11 @@ export function DataTable<Row>({ columns, rows, rowKey, caption, sort, onSort, o
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className={onRowClick ? "row-clickable" : undefined} onClick={onRowClick ? () => onRowClick(row) : undefined}>
+            <tr
+              key={rowKey(row)}
+              className={[onRowClick ? "row-clickable" : "", rowClassName?.(row) ?? ""].filter(Boolean).join(" ") || undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
               {columns.map((col) => (
                 <td key={col.key} className={cellClass(col)}>
                   {col.render(row)}

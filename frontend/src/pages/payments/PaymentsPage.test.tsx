@@ -80,6 +80,53 @@ describe("PaymentsPage", () => {
     expect(page.container.textContent).toContain("No payments match");
   });
 
+  it("arrives from Payment Health with the recovery filter applied and a way back", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?period=last_7_days&channel=mobile_app&recovery=unresolved&health=period%3Dlast_7_days%26channel%3Dmobile_app");
+    await flush();
+    const el = page.container;
+    expect(calls.filter((c) => c.url.startsWith("/api/payments?")).at(-1)?.url).toContain("recovery=unresolved");
+    expect(el.textContent).toContain("Recovery: Unresolved payments");
+    const back = Array.from(el.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(back?.getAttribute("href")).toBe("/payment-health?period=last_7_days&channel=mobile_app");
+    // The register export has no recovery filter, so it is not offered while one is applied.
+    expect(el.querySelector("a[data-export=payments]")).toBeNull();
+    // Switching tabs keeps the way back.
+    const attemptsTab = Array.from(el.querySelectorAll("[role=tab]")).find((t) => t.textContent === "Attempts");
+    await click(attemptsTab ?? null);
+    await flush();
+    expect(Array.from(el.querySelectorAll("a")).some((a) => a.textContent?.includes("Back to Payment Health"))).toBe(true);
+    expect(calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1)?.url).not.toContain("recovery");
+  });
+
+  it("only ever links back to Payment Health, whatever the health parameter holds", async () => {
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?health=" + encodeURIComponent("https://evil.example.com/?period=x&channel=<script>&from=2026-10-01"));
+    await flush();
+    const back = Array.from(page.container.querySelectorAll("a")).find((a) => a.textContent?.includes("Back to Payment Health"));
+    expect(back?.getAttribute("href")).toBe("/payment-health?from=2026-10-01");
+    page.unmount();
+    mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments");
+    await flush();
+    expect(Array.from(page.container.querySelectorAll("a")).some((a) => a.textContent?.includes("Back to Payment Health"))).toBe(false);
+  });
+
+  it("filters attempts by recorded failure signal", async () => {
+    const { calls } = mockFetch(handler);
+    page = await renderPage(<PaymentsPage />, "/payments?tab=attempts");
+    await flush();
+    const el = page.container;
+    expect(el.querySelector("a[data-export=attempts]")).not.toBeNull();
+    await setValue(el.querySelector("#attempts-signal"), "issuer_unavailable");
+    await flush();
+    const last = calls.filter((c) => c.url.startsWith("/api/attempts?")).at(-1);
+    expect(last?.url).toContain("outcome=failed");
+    expect(last?.url).toContain("failure_code=issuer_unavailable");
+    expect(el.textContent).toContain("Recorded signal: Issuer unavailable");
+    expect(el.querySelector("a[data-export=attempts]")).toBeNull();
+  });
+
   it("offers a CSV export of the current filters to roles with reports:operational only", async () => {
     mockFetch(handler);
     page = await renderPage(<PaymentsPage />, "/payments?status=failed&channel=website");

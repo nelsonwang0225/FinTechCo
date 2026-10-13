@@ -29,6 +29,7 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     ...periodParams(query),
     q: query.get("q") || undefined,
     outcome: query.get("outcome") || undefined,
+    failure_code: query.get("failure_code") || undefined,
     channel: query.get("channel") || undefined,
     location_id: query.get("location_id") || undefined,
     sort,
@@ -37,7 +38,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     page_size: PAGE_SIZE,
   };
   const list = useApi<AttemptListResponse>(`/api/attempts${queryString(params)}`);
-  const { page: _page, page_size: _pageSize, ...exportParams } = params;
+  // The attempts export has no failure-signal filter, so it is offered only when the list and the file would match.
+  const { page: _page, page_size: _pageSize, failure_code: _failureCode, ...exportParams } = params;
   const exportHref = `/api/reports/attempts.csv${queryString(exportParams)}`;
 
   const chips = useMemo<Chip[]>(() => {
@@ -45,6 +47,8 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
     const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? value;
     if (query.get("q")) out.push({ key: "q", label: `Search: ${query.get("q")}`, onRemove: () => query.set({ q: null }) });
     if (query.get("outcome")) out.push({ key: "outcome", label: `Outcome: ${label(meta.attempt_outcomes, query.get("outcome"))}`, onRemove: () => query.set({ outcome: null }) });
+    if (query.get("failure_code"))
+      out.push({ key: "failure_code", label: `Recorded signal: ${label(meta.failure_signals, query.get("failure_code"))}`, onRemove: () => query.set({ failure_code: null }) });
     if (query.get("channel")) out.push({ key: "channel", label: `Channel: ${label(meta.channels, query.get("channel"))}`, onRemove: () => query.set({ channel: null }) });
     if (query.get("location_id")) {
       const loc = meta.locations.find((l) => l.id === query.get("location_id"));
@@ -86,6 +90,13 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
         <PeriodFilter query={query} presets={meta.period_presets} idPrefix="attempts-period" />
         <FilterSelect id="attempts-outcome" label="Outcome" value={query.get("outcome")} options={meta.attempt_outcomes} onChange={(v) => query.set({ outcome: v })} />
         <FilterSelect
+          id="attempts-signal"
+          label="Recorded signal"
+          value={query.get("failure_code")}
+          options={meta.failure_signals}
+          onChange={(v) => query.set({ failure_code: v, outcome: v ? "failed" : query.get("outcome") })}
+        />
+        <FilterSelect
           id="attempts-channel"
           label="Channel"
           value={query.get("channel")}
@@ -102,10 +113,10 @@ export function AttemptsTab({ meta, query }: { meta: Meta; query: QueryState }) 
           />
         ) : null}
       </FilterBar>
-      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, channel: null, location_id: null })} />
+      <ActiveFilters chips={chips} onClear={() => query.set({ q: null, outcome: null, failure_code: null, channel: null, location_id: null })} />
       <div className="toolbar-note">
         <span>{list.data ? `Showing ${list.data.period.label.toLowerCase()}: ${list.data.period.range_label}` : null}</span>
-        {can("reports:operational") ? (
+        {can("reports:operational") && !params.failure_code ? (
           <a className="btn btn-sm" href={exportHref} download data-export="attempts">
             <IconDownload />
             Export CSV

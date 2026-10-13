@@ -30,7 +30,10 @@ def test_meta_has_options_and_scoped_locations(client_as, ids: Ids) -> None:
     assert [loc["name"] for loc in body["locations"]] == ["Fulton Market", "Lincoln Park"]
     assert_scoped(ids, body, ids.merchant("alder-loom"))
     assert integers_in(body) == [], "meta must carry no counts"
-    assert "failure_codes" not in body
+    # Recorded failure signals are labelled options (for the Attempts filter), never counts.
+    assert [o["value"] for o in body["failure_signals"]][:3] == ["insufficient_funds", "do_not_honor", "incorrect_cvc"]
+    assert len(body["failure_signals"]) == 11
+    assert [o["value"] for o in body["payment_recovery"]] == ["affected", "recovered", "unresolved"]
 
 
 def test_meta_locations_follow_the_session_merchant(client_as, ids: Ids) -> None:

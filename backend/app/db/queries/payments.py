@@ -30,6 +30,7 @@ class PaymentFilters:
     amount_min_cents: int | None = None
     amount_max_cents: int | None = None
     customer_id: str | None = None
+    recovery: str | None = None  # affected | recovered | unresolved, by payment (see api/payment_health.py)
     sort: str = "created_at"
     direction: str = "desc"
 
@@ -63,6 +64,14 @@ def _where(merchant_id: str, f: PaymentFilters) -> tuple[str, dict[str, object]]
     if f.customer_id:
         clauses.append("ps.customer_id = :customer_id")
         params["customer_id"] = f.customer_id
+    if f.recovery:
+        clauses.append(
+            "EXISTS (SELECT 1 FROM payment_attempt fa WHERE fa.payment_id = ps.id AND fa.merchant_id = ps.merchant_id AND fa.outcome = 'failed')"
+        )
+        if f.recovery == "recovered":
+            clauses.append("ps.succeeded_attempt_id IS NOT NULL")
+        elif f.recovery == "unresolved":
+            clauses.append("ps.succeeded_attempt_id IS NULL")
     return " AND ".join(clauses), params
 
 

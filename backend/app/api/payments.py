@@ -52,6 +52,7 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 Channel = Literal["website", "mobile_app", "in_store"]
 PaymentStatus = Literal["succeeded", "pending", "failed", "partially_refunded", "refunded"]
+Recovery = Literal["affected", "recovered", "unresolved"]
 PaymentSort = Literal["created_at", "amount", "status", "order_reference", "customer"]
 Direction = Literal["asc", "desc"]
 Preset = Literal["last_7_days", "last_30_days", "month_to_date", "custom"]
@@ -163,6 +164,7 @@ def list_payments(
     amount_min_cents: int | None = Query(None, ge=0),
     amount_max_cents: int | None = Query(None, ge=0),
     customer_id: str | None = Query(None, max_length=40),
+    recovery: Recovery | None = None,
     sort: PaymentSort = "created_at",
     direction: Direction = Query("desc", alias="dir"),
 ) -> PaymentListResponse:
@@ -177,6 +179,7 @@ def list_payments(
         amount_min_cents=amount_min_cents,
         amount_max_cents=amount_max_cents,
         customer_id=customer_id,
+        recovery=recovery,
         sort=sort,
         direction=direction,
     )

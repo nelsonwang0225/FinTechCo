@@ -78,6 +78,16 @@ def test_search_and_sort(client_as) -> None:
     assert c.get("/api/attempts?outcome=declined").status_code == 422
 
 
+@pytest.mark.parametrize("code", ["issuer_unavailable", "insufficient_funds", "incorrect_number"])
+def test_failure_signal_filter(client_as, seeded_conn: sqlite3.Connection, ids: Ids, code: str) -> None:
+    body = client_as("maya").get(f"/api/attempts?{LAST_30}&failure_code={code}&page_size=100").json()
+    assert body["total"] == count(seeded_conn, ids.merchant("alder-loom"), "AND a.failure_code = :f", {"f": code})
+    assert body["total"] > 0
+    assert all(i["failure_code"] == code and i["outcome"] == "failed" for i in body["items"])
+    assert_scoped(ids, body, ids.merchant("alder-loom"))
+    assert client_as("maya").get("/api/attempts?failure_code=bogus").status_code == 422
+
+
 def test_other_merchants_see_their_own_attempts(client_as, ids: Ids) -> None:
     body = client_as("priya").get(f"/api/attempts?{LAST_30}&page_size=50").json()
     assert body["total"] > 0
