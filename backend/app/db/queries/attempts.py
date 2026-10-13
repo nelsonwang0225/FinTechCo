@@ -32,6 +32,7 @@ class AttemptFilters:
     end: str
     search: str | None = None
     outcome: str | None = None
+    failure_code: str | None = None
     channel: str | None = None
     location_id: str | None = None
     sort: str = "created_at"
@@ -52,6 +53,9 @@ def _where(merchant_id: str, f: AttemptFilters) -> tuple[str, dict[str, object]]
     if f.outcome:
         clauses.append("a.outcome = :outcome")
         params["outcome"] = f.outcome
+    if f.failure_code:
+        clauses.append("a.failure_code = :failure_code")
+        params["failure_code"] = f.failure_code
     if f.channel:
         clauses.append("p.channel = :channel")
         params["channel"] = f.channel

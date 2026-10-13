@@ -13,6 +13,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import StreamingResponse
 
+from app.api.attempts import FailureCode
 from app.api.listing import resolve_period
 from app.api.payouts import destination_string
 from app.auth.permissions import require
@@ -128,13 +129,15 @@ def attempts_csv(
     from_date: date | None = Query(None, alias="from"),
     to_date: date | None = Query(None, alias="to"),
     outcome: Outcome | None = None,
+    failure_code: FailureCode | None = None,
     channel: Channel | None = None,
     location_id: str | None = Query(None, max_length=40),
     sort: AttemptSort = "created_at",
     direction: Direction = Query("desc", alias="dir"),
 ) -> StreamingResponse:
     resolved = resolve_period(conn, period, from_date, to_date)
-    filters = attempts_q.AttemptFilters(start=resolved.start, end=resolved.end, search=q, outcome=outcome, channel=channel, location_id=location_id, sort=sort, direction=direction)
+    filters = attempts_q.AttemptFilters(start=resolved.start, end=resolved.end, search=q, outcome=outcome, failure_code=failure_code, channel=channel, location_id=location_id, sort=sort,
+                                          direction=direction)
     filename = csv_export.export_filename(principal.merchant_slug, "attempts", resolved.from_day, resolved.to_day)
     csv_export.record_export(principal, conn, filename, _period_body("payment attempt", resolved))
     rows = (
